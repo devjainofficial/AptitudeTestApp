@@ -1,0 +1,111 @@
+﻿@page "/admin/test-links"
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Data.Models
+@inject ITestSessionService testSessionService
+
+@rendermode InteractiveServer
+
+<h3 class="mb-4">Manage Test Sessions</h3>
+
+@if (testSessions == null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!testSessions.Any())
+{
+    <div class="alert alert-info">No test sessions available.</div>
+}
+else
+{
+    <table class="table table-striped table-bordered align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>University</th>
+                <th>Test Name</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var session in testSessions)
+            {
+                <tr>
+                    <td>@session.University.Name</td>
+                    <td>@session.TestName</td>
+                    <td>@session.StartDate.ToShortDateString()</td>
+                    <td>@session.EndDate.ToShortDateString()</td>
+                    <td>
+                        @if (session.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-warning me-2" @onclick="() => DeactivateSession(session.Id)">Deactivate</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(session.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<!-- Confirm Delete Modal -->
+@if (deleteConfirmId != Guid.Empty)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Deletion</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this test session?</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="() => deleteConfirmId = Guid.Empty">Cancel</button>
+                    <button class="btn btn-danger" @onclick="DeleteConfirmed">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TestSession> testSessions = new();
+    private Guid deleteConfirmId = Guid.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTestSessionsAsync();
+    }
+
+    private async Task LoadTestSessionsAsync()
+    {
+        testSessions = await testSessionService.GetAllActiveTestSessionAsync();
+    }
+
+    private async Task DeactivateSession(Guid id)
+    {
+        await testSessionService.DeactivateTestSessionAsync(id);
+        await LoadTestSessionsAsync();
+    }
+
+    private void ConfirmDelete(Guid id)
+    {
+        deleteConfirmId = id;
+    }
+
+    private async Task DeleteConfirmed()
+    {
+        await testSessionService.DeleteTestSessionAsync(deleteConfirmId);
+        deleteConfirmId = Guid.Empty;
+        await LoadTestSessionsAsync();
+    }
+}

@@ -1,0 +1,129 @@
+﻿@page "/test/{StudentSubmissionId:guid}/start/{Token}"
+@inject ITestSessionService TestSessionService
+@inject NavigationManager Navigation
+@inject JavaScriptService JSService
+
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Application.Services
+@using AptitudeTestApp.Data.Models
+@using AptitudeTestApp.Shared.Enums
+@using Radzen
+@using Radzen.Blazor
+
+@rendermode InteractiveServer
+
+<PageTitle>Start Test</PageTitle>
+
+@if (submission is not null)
+{
+    <RadzenCard class="rz-m-4 rz-shadow-6" Style="max-width: auto; margin: 2rem auto;">
+        <RadzenRow class="rz-text-align-center rz-mb-4">
+            <RadzenColumn Size="12">
+                <RadzenIcon Icon="assignment" Style="font-size: 3rem; color: var(--rz-primary);" class="rz-mb-3"/>
+                <RadzenText TextStyle="TextStyle.H3" class="rz-mb-2">@submission.TestSession.TestName</RadzenText>
+                <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-text-secondary-color">
+                    Please read the instructions carefully before starting
+                </RadzenText>
+            </RadzenColumn>
+        </RadzenRow>
+
+        <RadzenCard class="rz-background-color-info-lighter rz-mb-4">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">
+                <RadzenIcon Icon="info" class="rz-mr-2"/>
+                Test Information
+            </RadzenText>
+            <RadzenRow>
+                <RadzenColumn Size="12" SizeMD="6">
+                    <div class="rz-mb-2">
+                        <RadzenIcon Icon="timer" class="rz-mr-2 rz-text-secondary-color"/>
+                        <strong>Duration:</strong> @submission.TestSession.TimeLimit minutes
+                    </div>
+                    <div class="rz-mb-2">
+                        <RadzenIcon Icon="quiz" class="rz-mr-2 rz-text-secondary-color"/>
+                        <strong>Test Level:</strong> @QuestionDifficulty.Medium
+                    </div>
+                </RadzenColumn>
+                <RadzenColumn Size="12" SizeMD="6">
+                    <div class="rz-mb-2">
+                        <RadzenIcon Icon="tab" class="rz-mr-2 rz-text-secondary-color"/>
+                        <strong>Tab Switches Allowed:</strong> @submission.TestSession.MaxTabSwitches
+                    </div>
+                    <div class="rz-mb-2">
+                        <RadzenIcon Icon="shuffle" class="rz-mr-2 rz-text-secondary-color"/>
+                        <strong>Questions:</strong> Randomized order
+                    </div>
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenCard>
+
+        <RadzenCard class="rz-background-color-warning-lighter rz-mb-4">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">
+                <RadzenIcon Icon="warning" class="rz-mr-2"/>
+                Important Instructions
+            </RadzenText>
+            <ul>
+                <li>Read each question carefully before selecting your answer</li>
+                <li>The test auto-submits when time expires</li>
+                <li>You can navigate between questions</li>
+                <li>Answers can be changed before final submission</li>
+                <li>Do not refresh the page or switch tabs too often</li>
+                <li>Click "Submit Test" after the last question or if done</li>
+            </ul>
+        </RadzenCard>
+
+        <RadzenCard class="rz-background-color-success-lighter rz-mb-4">
+            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">
+                <RadzenIcon Icon="lightbulb" class="rz-mr-2"/>
+                Tips for Success
+            </RadzenText>
+            <ul>
+                <li>Manage your time wisely</li>
+                <li>No negative marking – answer all questions</li>
+                <li>Review your answers if time permits</li>
+                <li>Stay calm and focused</li>
+            </ul>
+        </RadzenCard>
+
+        <RadzenRow class="rz-text-align-center rz-mt-4">
+            <RadzenColumn Size="12">
+                <RadzenCheckBox @bind-Value="@agreedToTerms" Name="terms" class="rz-mr-2"/>
+                <RadzenLabel Text="I have read and understood the instructions" Component="terms" class="rz-mr-4" />
+                <br/>
+                <RadzenButton Click="StartTest"
+                             Disabled="@(!agreedToTerms)"
+                             ButtonStyle="ButtonStyle.Primary"
+                             Size="ButtonSize.Large"
+                             Icon="play_arrow"
+                             Text="Start Test"
+                             class="rz-mt-3" />
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+}
+else
+{
+    <RadzenCard class="rz-p-4 rz-text-align-center">
+        <RadzenText Text="Loading..." />
+        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+    </RadzenCard>
+}
+
+@code {
+    [Parameter] public required string Token { get; set; }
+    [Parameter] public required Guid StudentSubmissionId { get; set; }
+
+    private StudentSubmission? submission;
+    private bool agreedToTerms = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        submission = await TestSessionService.GetSubmissionAsync(StudentSubmissionId);
+    }
+
+    private async Task StartTest()
+    {
+        await JSService.InitializeAntiCheat(StudentSubmissionId, submission.TestSession.MaxTabSwitches);
+        Navigation.NavigateTo($"/test/{StudentSubmissionId}/questions/{Token}");
+    }
+}

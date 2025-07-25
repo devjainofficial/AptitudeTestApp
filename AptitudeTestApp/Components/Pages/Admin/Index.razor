@@ -1,0 +1,201 @@
+﻿@page "/"
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Application.Services
+@using AptitudeTestApp.Data.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+<PageTitle>Admin Dashboard</PageTitle>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1>Admin Dashboard</h1>
+            <p>Welcome to the Aptitude Test Administration Panel</p>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>@totalUniversities</h4>
+                            <p class="mb-0">Universities</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-university fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-primary">
+                    <a href="/admin/universities" class="text-white text-decoration-none">
+                        View Details <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>@totalQuestions</h4>
+                            <p class="mb-0">Questions</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-question-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-success">
+                    <a href="/admin/question-bank" class="text-white text-decoration-none">
+                        Manage Questions <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>@activeTests</h4>
+                            <p class="mb-0">Active Tests</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clipboard-list fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-info">
+                    <a href="/admin/test-links" class="text-white text-decoration-none">
+                        View Tests <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>@totalSubmissions</h4>
+                            <p class="mb-0">Total Submissions</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-warning">
+                    <a href="/admin/results" class="text-white text-decoration-none">
+                        View Results <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Recent Test Sessions</h5>
+                </div>
+                <div class="card-body">
+                    @if (recentTestSessions?.Any() == true)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Test Name</th>
+                                        <th>University</th>
+                                        <th>Student</th>
+                                        <th>Created</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var test in recentTestSessions.Take(5))
+                                    {
+                                        <tr>
+                                            <td>@test.TestName</td>
+                                            <td>@test.University.Name</td>
+                                            <td>@test.StudentSubmissions?.FirstOrDefault()?.StudentName</td>
+                                            <td>@test.CreatedAt.ToString("MMM dd yyyy")</td>
+                                            <td>
+                                                <span class="badge @(test.IsActive ? "bg-success" : "bg-secondary")">
+                                                    @(test.IsActive ? "Active" : "Inactive")
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No test sessions found.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="/admin/create-test" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create New Test
+                        </a>
+                        <a href="/admin/question-bank/add" class="btn btn-success">
+                            <i class="fas fa-question"></i> Add Question
+                        </a>
+                        <a href="/admin/universities/add" class="btn btn-info">
+                            <i class="fas fa-university"></i> Add University
+                        </a>
+                        <a href="/admin/results/export" class="btn btn-warning">
+                            <i class="fas fa-download"></i> Export Results
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject] private IUniversityService UniversityService { get; set; } = default!;
+    [Inject] private IQuestionService QuestionService { get; set; } = default!;
+    [Inject] private ITestSessionService TestSessionService { get; set; } = default!;
+
+    private int totalUniversities = 0;
+    private int totalQuestions = 0;
+    private int activeTests = 0;
+    private int totalSubmissions = 0;
+    private List<TestSession>? recentTestSessions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        totalUniversities = await UniversityService.GetTotalCountAsync();
+        totalQuestions = await QuestionService.GetTotalCountAsync();
+        activeTests = await TestSessionService.GetActiveTestCountAsync();
+        totalSubmissions = await TestSessionService.GetTotalSubmissionCountAsync();
+        recentTestSessions = await TestSessionService.GetRecentTestSessionsAsync(1);
+    }
+}

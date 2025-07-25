@@ -1,0 +1,202 @@
+﻿@page "/test/{StudentSubmissionId:guid}/questions/{Token}"
+@inject ITestSessionService TestSessionService
+@inject JavaScriptService JSService
+@inject NavigationManager Navigation
+
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Application.Services
+@using AptitudeTestApp.Data.Models
+@using AptitudeTestApp.Shared.Enums
+@using Radzen
+@using Radzen.Blazor
+
+@rendermode InteractiveServer
+
+<PageTitle>Test Running</PageTitle>
+
+@if (submission is not null)
+{
+    <RadzenCard>
+        <div class="rz-mb-3 rz-text-align-center">
+            <h3>@submission.TestSession.TestName</h3>
+            <RadzenBadge BadgeStyle="BadgeStyle.Info">Time Left: @timeRemaining</RadzenBadge>
+            <RadzenBadge BadgeStyle="BadgeStyle.Success" class="rz-ml-2">
+                Question @(currentQuestionIndex + 1) / @questions.Count
+            </RadzenBadge>
+        </div>
+
+        @if (questions.Any())
+        {
+            var currentQuestion = questions[currentQuestionIndex];
+            <div class="rz-mb-4">
+                <h5>@currentQuestion.QuestionText</h5>
+                <RadzenRadioButtonList @bind-Value="selectedOptionId"
+                                       TValue="Guid?"
+                                       Data="@currentQuestion.Options"
+                                       TextProperty="OptionText"
+                                       ValueProperty="Id"
+                                       Orientation="Orientation.Vertical"
+                                       Change="@((args) => SelectAnswer(currentQuestion.Id, args))"
+                                       Style="width:100%" />
+            </div>
+
+            <RadzenRow>
+                <RadzenColumn Size="6">
+                    <RadzenButton Text="Previous"
+                                  Click="PreviousQuestion"
+                                  Disabled="@(currentQuestionIndex == 0)"
+                                  Icon="navigate_before"
+                                  ButtonStyle="ButtonStyle.Light" />
+                </RadzenColumn>
+                <RadzenColumn Size="6" class="rz-text-align-right">
+                    @if (currentQuestionIndex < questions.Count - 1)
+                    {
+                        <RadzenButton Text="Next"
+                                      Click="NextQuestion"
+                                      Icon="navigate_next"
+                                      ButtonStyle="ButtonStyle.Primary" />
+                    }
+                    else
+                    {
+                        <RadzenButton Text="Submit Test"
+                                      Click="ConfirmSubmission"
+                                      Icon="send"
+                                      Disabled="@isSubmitting"
+                                      ButtonStyle="ButtonStyle.Success" />
+                    }
+                </RadzenColumn>
+            </RadzenRow>
+        }
+    </RadzenCard>
+}
+else
+{
+    <RadzenCard class="rz-p-4 rz-text-align-center">
+        <RadzenText Text="Loading..." />
+        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+    </RadzenCard>
+}
+
+@code {
+    [Parameter] public required string Token { get; set; }
+    [Parameter] public required Guid StudentSubmissionId { get; set; }
+
+    private StudentSubmission? submission;
+    private List<QuestionDto> questions = new();
+    private Dictionary<Guid, Guid> selectedAnswers = new();
+    private int currentQuestionIndex = 0;
+    private string timeRemaining = "";
+    private DateTime testEndTime;
+    private Timer? timer;
+    private bool isSubmitting = false;
+    private Guid? selectedOptionId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        (questions, submission) = await TestSessionService.GetRandomizedQuestionsWithSubmissionAsync(StudentSubmissionId);
+
+        @if (submission is null || 
+             submission.Status == TestStatus.Completed || 
+             submission.Status == TestStatus.Disqualified || 
+             DateTime.UtcNow > submission.StartTime.AddMinutes(submission.TestSession.TimeLimit)
+        )
+        {
+            Navigation.NavigateTo("/unauthorized", forceLoad: true);
+            return;
+        }
+
+        testEndTime = submission.StartTime.AddMinutes(submission.TestSession.TimeLimit);
+        StartTimer();
+        LoadSavedAnswers();
+    }
+
+    private void StartTimer()
+    {
+        timer = new Timer(UpdateTimer, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
+    private async void UpdateTimer(object? state)
+    {
+        var remaining = testEndTime - DateTime.UtcNow;
+        if (remaining <= TimeSpan.Zero)
+        {
+            await InvokeAsync(() => AutoSubmitTest("TimedOut"));
+        }
+        else
+        {
+            await InvokeAsync(() =>
+            {
+                timeRemaining = $"{remaining.Hours:D2}:{remaining.Minutes:D2}:{remaining.Seconds:D2}";
+                StateHasChanged();
+            });
+        }
+    }
+
+    private void LoadSavedAnswers()
+    {
+        var questionId = questions[currentQuestionIndex].Id;
+        selectedOptionId = selectedAnswers.ContainsKey(questionId) ? selectedAnswers[questionId] : null;
+    }
+
+    private async Task SelectAnswer(Guid questionId, Guid? optionId)
+    {  
+        if (optionId.HasValue)
+        {   
+            if (selectedAnswers.TryGetValue(questionId, out var existingOptionId) && existingOptionId == optionId.Value)
+            {
+                return;
+            }
+
+            selectedAnswers[questionId] = optionId.Value;
+            await TestSessionService.SaveAnswerAsync(StudentSubmissionId, questionId, optionId.Value);
+        }
+    }
+
+    private void NextQuestion()
+    {
+        if (currentQuestionIndex < questions.Count - 1)
+        {
+            currentQuestionIndex++;
+            LoadSavedAnswers();
+        }
+    }
+
+    private void PreviousQuestion()
+    {
+        if (currentQuestionIndex > 0)
+        {
+            currentQuestionIndex--;
+            LoadSavedAnswers();
+        }
+    }
+
+    private async Task ConfirmSubmission()
+    {
+        var unanswered = questions.Count - selectedAnswers.Count;
+        // var confirm = await JSService.ConfirmDialog($"You have {unanswered} unanswered questions. Submit?");
+        // if (confirm)
+            await SubmitTest();
+    }
+
+    private async Task SubmitTest()
+    {
+        isSubmitting = true;
+        await TestSessionService.SubmitTestAsync(StudentSubmissionId, "Completed");
+        await JSService.CleanupAntiCheat();
+        Navigation.NavigateTo($"/test/completed/{StudentSubmissionId}");
+    }
+
+    private async Task AutoSubmitTest(string reason)
+    {
+        await TestSessionService.SubmitTestAsync(StudentSubmissionId, reason);
+        await JSService.CleanupAntiCheat();
+        Navigation.NavigateTo($"/test/completed/{StudentSubmissionId}?reason={Uri.EscapeDataString(reason)}");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        timer?.Dispose();
+        await JSService.CleanupAntiCheat();
+    }
+}

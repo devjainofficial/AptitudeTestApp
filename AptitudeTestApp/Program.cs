@@ -1,15 +1,23 @@
+using AptitudeTestApp.Application;
+using AptitudeTestApp.Application.Services;
 using AptitudeTestApp.Components;
 using AptitudeTestApp.Components.Account;
 using AptitudeTestApp.Data;
+using AptitudeTestApp.Infrastructure;
+using AptitudeTestApp.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Radzen;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddRadzenComponents();
+builder.Services.AddRazorPages();
+builder.Services.AddServerSideBlazor();
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityUserAccessor>();
@@ -35,7 +43,14 @@ builder.Services.AddIdentityCore<ApplicationUser>(options => options.SignIn.Requ
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
+builder.Services.AddApplicationDependencies();
+builder.Services.AddInfrastructureDependencies();
+builder.Services.AddScoped<DialogService>();
+
 var app = builder.Build();
+
+ServiceProviderAccessor.ServiceProvider = app.Services;
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -56,9 +71,13 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+   .AddInteractiveServerRenderMode();
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+using var scope = app.Services.CreateScope();
+var seeder = scope.ServiceProvider.GetRequiredService<DataSeedingService>();
+await seeder.SeedAsync();
 
 app.Run();

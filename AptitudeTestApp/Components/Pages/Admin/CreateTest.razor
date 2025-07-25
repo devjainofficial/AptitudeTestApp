@@ -1,0 +1,50 @@
+﻿@page "/admin/create-test"
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Data.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@inject ITestSessionService TestSession
+@inject NavigationManager Navigation
+
+@attribute [Authorize]
+
+<PageTitle>Create Test</PageTitle>
+
+<h3>CreateTest</h3>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is not null)
+        {
+            var authState = await AuthenticationState;
+
+            var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var testSessionDto = new CreateTestSessionDto
+            {
+                TestName = "Sample Test",
+                UniversityId = new Guid("9823cfed-3435-4fa0-a1e0-816b1a190b78"),
+                TimeLimit = 60,
+                PassingScore = 70,
+                MaxTabSwitches = 3,
+                TotalQuestions = 2,
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow.AddDays(1),
+                SelectedQuestionIds = new List<Guid>
+                {
+                    new Guid("a996792b-3a0b-491b-859d-6eba0607a003"),
+                    new Guid("ed59e8cd-71f2-42cd-aa78-db5633f9ba07")
+                }
+            };
+
+            TestSession? testSession = await TestSession.CreateTestSessionAsync(testSessionDto, userId ?? "Admin");
+
+            Navigation.NavigateTo($"/test/{testSession.UniversityId}/{testSession.Token}");
+        }
+    }
+}

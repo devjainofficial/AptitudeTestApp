@@ -1,0 +1,90 @@
+﻿@page "/test/{UniversityId:guid}/{Token}"
+@using System.ComponentModel.DataAnnotations
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Data.Models
+@inject ITestSessionService TestSessionService
+@inject NavigationManager Navigation
+@using Radzen
+@using Radzen.Blazor
+@rendermode InteractiveServer
+
+<PageTitle>Aptitude Test</PageTitle>
+
+@if (!isActive)
+{
+    <div class="m-4">
+        <RadzenCard Style="max-width: 500px; margin: auto; margin-top: 100px;">
+            <h3 class="text-danger text-center">This test session is inactive or invalid.</h3>
+        </RadzenCard>
+    </div>
+}
+else
+{
+    <div class="m-4">
+        <RadzenCard Style="max-width: 500px; margin: auto; margin-top: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1)">
+            <EditForm Model="@studentInfo" OnValidSubmit="@StartTest" FormName="StudentStartForm">
+                <DataAnnotationsValidator />
+
+                <div class="mb-3">
+                    <RadzenLabel Text="Full Name" Component="StudentName" />
+                    <RadzenTextBox Name="StudentName" @bind-Value="studentInfo.StudentName" Style="width: 100%;" />
+                    <ValidationMessage For="@(() => studentInfo.StudentName)" />
+                </div>
+
+                <div class="mb-3">
+                    <RadzenLabel Text="Email" Component="StudentEmail" />
+                    <RadzenTextBox Name="StudentEmail" @bind-Value="studentInfo.StudentEmail" Style="width: 100%;" />
+                    <ValidationMessage For="@(() => studentInfo.StudentEmail)" />
+                </div>
+
+                <RadzenButton Text="Start Test"
+                              ButtonStyle="ButtonStyle.Primary"
+                              Icon="play_circle"
+                              Type="Submit"
+                              Style="margin-top: 20px; width: 100%"
+                              Disabled="@isSubmitting" />
+
+                @if (isSubmitting)
+                {
+                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="margin-top: 15px;" />
+                }
+            </EditForm>
+        </RadzenCard>
+    </div>
+}
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+    [Parameter] public Guid UniversityId { get; set; } = Guid.Empty;
+
+    private StudentTestStartDto studentInfo = new();
+    private TestSession? testSession;
+    private bool isActive;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        testSession = await TestSessionService.GetTestSessionByTokenAsync(Token);
+        isActive = testSession != null && testSession.IsActive;
+
+        if (isActive)
+        {
+            studentInfo.Token = Token;
+        }
+    }
+
+    private async Task StartTest()
+    {
+        isSubmitting = true;
+
+        StudentSubmission studentSubmission = await TestSessionService.StartTestAsync(studentInfo);
+
+        if (studentSubmission is not null)
+        {
+            Navigation.NavigateTo($"/test/{studentSubmission.Id}/start/{Token}");
+        }
+
+        isSubmitting = false;
+    }
+}

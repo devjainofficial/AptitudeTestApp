@@ -1,9 +1,9 @@
-﻿using AptitudeTestApp.Data.Models;
+﻿using AptitudeTestApp.Application.DTOs;
 
 namespace AptitudeTestApp.Application.Interfaces;
 
-public interface IUniversityService
+public interface IUniversityService : IEntityService<UniversityDto, Guid>
 {
-    Task<int> GetTotalCountAsync();
-    Task<List<University>> GetAllUniversitiesAsync();
+    Task ToggleActivateUniversityAsync(Guid id);
+    Task<List<UniversityDto>> GetAllActiveUniversity(Guid creatorId);
 }

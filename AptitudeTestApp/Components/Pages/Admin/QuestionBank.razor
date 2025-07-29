@@ -1,0 +1,142 @@
+﻿@page "/admin/question-bank"
+@using AptitudeTestApp.Shared.Enums
+@using Microsoft.AspNetCore.Authorization
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using Microsoft.AspNetCore.Components.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using System.Security.Claims
+
+@inject IQuestionService QuestionService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Nav
+@inject IToastService ToastService
+
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<div class="px-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="text-dark">Question Bank</h2>
+
+        <RadzenButton Icon="add_circle" Text="Add New Question"
+                      Click="@NavigateToAddPage"
+                      Style="background-color: #000; color: white; border-radius: 8px;" />
+    </div>
+
+    <RadzenDataGrid @ref="grid" Data="@pagedQuestions" TItem="QuestionDto" Count="@totalCount"
+                    LoadData="@LoadData" AllowPaging="true" PageSize="10"
+                    AllowSorting="true" EditMode="DataGridEditMode.Single"
+                    RowUpdate="@OnUpdateQuestion"
+                    Class="shadow-sm border rounded"
+                    Style="width:100%; font-size: 15px;">
+
+        <Columns>
+            <RadzenDataGridColumn TItem="QuestionDto" Property="QuestionText" Title="Question">
+                <Template Context="q">
+                    <div style="white-space: normal; word-break: break-word;">
+                        @q.QuestionText
+                    </div>
+                </Template>
+                <EditTemplate Context="q">
+                    <RadzenTextBox @bind-Value="q.QuestionText" Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="QuestionDto" Property="QuestionType" Title="Type" />
+
+            <RadzenDataGridColumn TItem="QuestionDto" Property="DifficultyLevel" Title="Difficulty">
+                <EditTemplate Context="q">
+                    <RadzenDropDown @bind-Value="q.DifficultyLevel"
+                                    Data="@difficultyLevels"
+                                    TValue="QuestionDifficulty"
+                                    Style="width:100%" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="QuestionDto" Property="Points" Title="Points">
+                <EditTemplate Context="q">
+                    <RadzenNumeric TValue="int" @bind-Value="q.Points" Min="1" Max="10" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="QuestionDto" Property="IsActive" Title="Active">
+                <EditTemplate Context="q">
+                    <RadzenCheckBox @bind-Value="q.IsActive" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="QuestionDto" Title="Actions" Context="q">
+                <Template Context="q">
+                    <RadzenButton Icon="edit" Size="ButtonSize.Small" Style="background: #000" Click="@(() => grid.EditRow(q))" />
+                </Template>
+                <EditTemplate Context="q">
+                    <RadzenButton Icon="save" Size="ButtonSize.Small" Style="margin-right:5px; background: #ddd; color: #000" Click="@(() => grid.UpdateRow(q))" />
+                    <RadzenButton Icon="cancel" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Secondary" Style="background: #333; color:#fff" Click="@(() => grid.CancelEditRow(q))" />
+                </EditTemplate>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private List<QuestionDto> pagedQuestions = new();
+    private int totalCount = 0;
+    private Guid userId = Guid.Empty;
+    private bool firstRender = true;
+    private RadzenDataGrid<QuestionDto>? grid;
+    private IEnumerable<QuestionDifficulty> difficultyLevels = Enum.GetValues(typeof(QuestionDifficulty)).Cast<QuestionDifficulty>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is not null)
+        {
+            var authState = await AuthenticationState;
+            var userIdStr = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(userIdStr, out var parsedUserId))
+                userId = parsedUserId;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && userId != Guid.Empty)
+        {
+            this.firstRender = false;
+            await LoadData(new LoadDataArgs { Skip = 0, Top = 10 });
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadData(LoadDataArgs args)
+    {
+        int skip = args.Skip ?? 0;
+        int take = args.Top ?? 10;
+
+        var result = await QuestionService.GetAllAsync(userId, skip, take);
+        pagedQuestions = result;
+        totalCount = result.Count;
+    }
+
+    private async Task OnUpdateQuestion(QuestionDto updated)
+    {
+        await QuestionService.UpdateAsync(updated, userId);
+        // if (result)
+        // {
+        //     ToastService.Success("Success", "Question updated successfully");
+        // }
+        // else
+        // {
+        //     ToastService.Error("Error", "Update failed");
+        // }
+    }
+
+    private void NavigateToAddPage()
+    {
+        Nav.NavigateTo("/admin/add-question");
+    }
+}

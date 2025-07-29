@@ -57,6 +57,7 @@ else
 @code {
     [Parameter] public string Token { get; set; } = string.Empty;
     [Parameter] public Guid UniversityId { get; set; } = Guid.Empty;
+    [Parameter] public Guid TestCreatorId { get; set; } = Guid.Empty;
 
     private StudentTestStartDto studentInfo = new();
     private TestSession? testSession;
@@ -82,7 +83,7 @@ else
 
         if (studentSubmission is not null)
         {
-            Navigation.NavigateTo($"/test/{studentSubmission.Id}/start/{Token}");
+            Navigation.NavigateTo($"/test/{studentSubmission.Id}/start");
         }
 
         isSubmitting = false;

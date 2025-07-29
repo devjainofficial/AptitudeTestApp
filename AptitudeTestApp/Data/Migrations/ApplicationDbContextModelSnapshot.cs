@@ -94,6 +94,12 @@ namespace AptitudeTestApp.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWID()");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("EventDetails")
                         .HasColumnType("nvarchar(max)");
 
@@ -109,6 +115,8 @@ namespace AptitudeTestApp.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
 
                     b.HasIndex("SubmissionId");
 
@@ -130,6 +138,9 @@ namespace AptitudeTestApp.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("DifficultyLevel")
                         .HasColumnType("int");
@@ -153,6 +164,8 @@ namespace AptitudeTestApp.Migrations
 
                     b.HasIndex("CategoryId");
 
+                    b.HasIndex("CreatorId");
+
                     b.ToTable("Questions");
                 });
 
@@ -165,6 +178,9 @@ namespace AptitudeTestApp.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
                         .HasMaxLength(500)
@@ -180,6 +196,8 @@ namespace AptitudeTestApp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatorId");
+
                     b.ToTable("QuestionCategories");
                 });
 
@@ -189,6 +207,12 @@ namespace AptitudeTestApp.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWID()");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
@@ -205,6 +229,8 @@ namespace AptitudeTestApp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatorId");
+
                     b.HasIndex("QuestionId");
 
                     b.ToTable("QuestionOptions");
@@ -219,6 +245,12 @@ namespace AptitudeTestApp.Migrations
 
                     b.Property<DateTime>("AnsweredAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsCorrect")
                         .HasColumnType("bit");
@@ -239,6 +271,8 @@ namespace AptitudeTestApp.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
 
                     b.HasIndex("QuestionId");
 
@@ -263,6 +297,9 @@ namespace AptitudeTestApp.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("DisqualificationReason")
                         .HasMaxLength(500)
@@ -315,6 +352,8 @@ namespace AptitudeTestApp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatorId");
+
                     b.HasIndex("TestSessionId");
 
                     b.ToTable("StudentSubmissions");
@@ -332,6 +371,9 @@ namespace AptitudeTestApp.Migrations
 
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -373,6 +415,8 @@ namespace AptitudeTestApp.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatorId");
+
                     b.HasIndex("Token")
                         .IsUnique();
 
@@ -388,6 +432,12 @@ namespace AptitudeTestApp.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasDefaultValueSql("NEWID()");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
 
@@ -398,6 +448,8 @@ namespace AptitudeTestApp.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatorId");
 
                     b.HasIndex("QuestionId");
 
@@ -429,6 +481,9 @@ namespace AptitudeTestApp.Migrations
                     b.Property<string>("CreatedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("CreatorId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -441,6 +496,8 @@ namespace AptitudeTestApp.Migrations
 
                     b.HasIndex("Code")
                         .IsUnique();
+
+                    b.HasIndex("CreatorId");
 
                     b.ToTable("Universities");
                 });

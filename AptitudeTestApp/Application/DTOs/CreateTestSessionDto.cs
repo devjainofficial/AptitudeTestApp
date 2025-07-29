@@ -2,7 +2,7 @@
 
 namespace AptitudeTestApp.Application.DTOs;
 
-public class CreateTestSessionDto
+public class CreateTestSessionDto : BaseDto<Guid>
 {
     [Required, MaxLength(200)]
     public string TestName { get; set; } = string.Empty;
@@ -15,8 +15,7 @@ public class CreateTestSessionDto
     [Range(10, 480)] // 10 minutes to 8 hours
     public int TimeLimit { get; set; } = 60;
 
-    [Range(1, 100)]
-    public int TotalQuestions { get; set; } = 20;
+    public int TotalQuestions { get; set; }
 
     [Range(0, 100)]
     public decimal PassingScore { get; set; } = 60.00m;
@@ -25,10 +24,10 @@ public class CreateTestSessionDto
     public int MaxTabSwitches { get; set; } = 3;
 
     [Required]
-    public DateTime StartDate { get; set; }
+    public DateTime StartDate { get; set; } = DateTime.UtcNow;
 
     [Required]
-    public DateTime EndDate { get; set; }
+    public DateTime EndDate { get; set; } = DateTime.UtcNow.AddDays(1);
 
     public List<Guid> SelectedQuestionIds { get; set; } = new();
 }

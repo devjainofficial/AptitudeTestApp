@@ -1,23 +1,83 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+@inject NavigationManager NavigationManager
+
+<div class="layout-wrapper">
+
+    <!-- Top Navbar for Logged-in Users Only -->
+    <AuthorizeView>
+        <Authorized>
+            <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
+                <div class="container-fluid">
+                    <a class="navbar-brand fw-bold" href="/">Talent Scope</a>
+
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                                    <i class="bi bi-house-door-fill me-1"></i> Dashboard
+                                </NavLink>
+                            </li>
+                            <!-- Add other logged-in links here -->
+                        </ul>
+
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="Account/Manage">
+                                    <i class="bi bi-person-circle me-1"></i> @context.User.Identity?.Name
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <form class="d-inline" action="Account/Logout" method="post">
+                                    <AntiforgeryToken />
+                                    <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                                    <button type="submit" class="btn nav-link text-white border-0">
+                                        <i class="bi bi-box-arrow-right me-1"></i> Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </Authorized>
+    </AuthorizeView>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        @Body
     </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
 </div>
 
-<div id="blazor-error-ui" data-nosnippet>
+<!-- Error UI -->
+<div id="blazor-error-ui" data-nosnippet class="alert alert-danger fixed-bottom m-2 shadow">
     An unhandled error has occurred.
-    <a href="." class="reload">Reload</a>
-    <span class="dismiss">🗙</span>
+    <a href="." class="alert-link">Reload</a>
+    <span class="dismiss btn-close float-end" style="cursor:pointer;"></span>
 </div>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

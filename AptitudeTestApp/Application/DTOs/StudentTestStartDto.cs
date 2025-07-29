@@ -2,7 +2,7 @@
 
 namespace AptitudeTestApp.Application.DTOs;
 
-public class StudentTestStartDto
+public class StudentTestStartDto : BaseDto<Guid>
 {
     [Required(ErrorMessage = "Full Name is required")]
     public string StudentName { get; set; } = string.Empty;

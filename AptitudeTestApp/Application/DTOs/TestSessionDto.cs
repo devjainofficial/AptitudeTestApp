@@ -2,9 +2,8 @@
 
 namespace AptitudeTestApp.Application.DTOs;
 
-public class TestSessionDto
+public class TestSessionDto : BaseDto<Guid>
 {
-    public Guid Id { get; set; }
     public Guid UniversityId { get; set; }
     public string TestName { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -16,4 +15,5 @@ public class TestSessionDto
     public DateTime EndDate { get; set; }
     public string Token { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public virtual UniversityDto University { get; set; } = new UniversityDto();
 }

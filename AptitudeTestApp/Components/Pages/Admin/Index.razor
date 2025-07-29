@@ -2,122 +2,87 @@
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Application.Services
 @using AptitudeTestApp.Data.Models
+@using AptitudeTestApp.Shared.Components
 @using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @attribute [Authorize]
 
 <PageTitle>Admin Dashboard</PageTitle>
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <h1>Admin Dashboard</h1>
-            <p>Welcome to the Aptitude Test Administration Panel</p>
+<div class="container-fluid py-2 px-4 bg-light" style="min-height: 85vh;">
+    <div class="mb-2">
+        <h2 class="fw-semibold text-dark">Admin Dashboard</h2>
+        <p class="text-muted">Welcome to the Talent Scope Administration Panel</p>
+    </div>
+
+    <!-- Gradient Cards -->
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4 mb-4">
+        <div class="col">
+            <DashboardCard title="Universities"
+                           count="@totalUniversities"
+                           icon="university"
+                           gradient="linear-gradient(135deg, #000000, #3c3a3f)"
+                           link="/admin/universities" />
+        </div>
+        <div class="col">
+            <DashboardCard title="Questions"
+                           count="@totalQuestions"
+                           icon="question-circle"
+                           gradient="linear-gradient(135deg, #000000, #2e4052)"
+                           link="/admin/question-bank" />
+        </div>  
+        <div class="col">
+            <DashboardCard title="Active Tests"
+                           count="@activeTests"
+                           icon="clipboard-list"
+                           gradient="linear-gradient(135deg, #000000, #330867)"
+                           link="/admin/test-links" />
+        </div>
+        <div class="col">
+            <DashboardCard title="Submissions"
+                           count="@totalSubmissions"
+                           icon="users"
+                           gradient="linear-gradient(135deg, #000000, #453423)"
+                           link="/admin/student-results" />
         </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4>@totalUniversities</h4>
-                            <p class="mb-0">Universities</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-university fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-primary">
-                    <a href="/admin/universities" class="text-white text-decoration-none">
-                        View Details <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
 
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4>@totalQuestions</h4>
-                            <p class="mb-0">Questions</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-question-circle fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-success">
-                    <a href="/admin/question-bank" class="text-white text-decoration-none">
-                        Manage Questions <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4>@activeTests</h4>
-                            <p class="mb-0">Active Tests</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-clipboard-list fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-info">
-                    <a href="/admin/test-links" class="text-white text-decoration-none">
-                        View Tests <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4>@totalSubmissions</h4>
-                            <p class="mb-0">Total Submissions</p>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-users fa-2x"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-footer bg-warning">
-                    <a href="/admin/results" class="text-white text-decoration-none">
-                        View Results <i class="fas fa-arrow-right"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
+    <!-- Quick Actions & Recent Sessions -->
+    <div class="row g-4">
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Recent Test Sessions</h5>
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                <div class="card-header bg-transparent border-0 px-0">
+                    <h5 class="fw-medium text-dark">Quick Actions</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body d-grid gap-3 px-0">
+                    @foreach (var action in QuickActions)
+                    {
+                        <a class="btn btn-light border d-flex align-items-center justify-content-between px-3 py-2 shadow-sm rounded-3 text-start" href="@action.Link">
+                            <span><i class="fas fa-@action.Icon me-2"></i> @action.Label</span>
+                            <i class="fas fa-chevron-right text-muted"></i>
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+                <div class="card-header bg-transparent border-0 px-0">
+                    <h5 class="fw-medium text-dark">Recent Test Sessions</h5>
+                </div>
+                <div class="card-body px-0">
                     @if (recentTestSessions?.Any() == true)
                     {
                         <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>Test Name</th>
+                                        <th>Test</th>
                                         <th>University</th>
                                         <th>Student</th>
-                                        <th>Created</th>
+                                        <th>Date</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -126,11 +91,11 @@
                                     {
                                         <tr>
                                             <td>@test.TestName</td>
-                                            <td>@test.University.Name</td>
+                                            <td>@test.University?.Name</td>
                                             <td>@test.StudentSubmissions?.FirstOrDefault()?.StudentName</td>
                                             <td>@test.CreatedAt.ToString("MMM dd yyyy")</td>
                                             <td>
-                                                <span class="badge @(test.IsActive ? "bg-success" : "bg-secondary")">
+                                                <span class="badge rounded-pill bg-@(test.IsActive ? "dark" : "danger")">
                                                     @(test.IsActive ? "Active" : "Inactive")
                                                 </span>
                                             </td>
@@ -142,32 +107,8 @@
                     }
                     else
                     {
-                        <p class="text-muted">No test sessions found.</p>
+                        <p class="text-muted">No recent sessions found.</p>
                     }
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Quick Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="/admin/create-test" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Create New Test
-                        </a>
-                        <a href="/admin/question-bank/add" class="btn btn-success">
-                            <i class="fas fa-question"></i> Add Question
-                        </a>
-                        <a href="/admin/universities/add" class="btn btn-info">
-                            <i class="fas fa-university"></i> Add University
-                        </a>
-                        <a href="/admin/results/export" class="btn btn-warning">
-                            <i class="fas fa-download"></i> Export Results
-                        </a>
-                    </div>
                 </div>
             </div>
         </div>
@@ -175,6 +116,7 @@
 </div>
 
 @code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
     [Inject] private IUniversityService UniversityService { get; set; } = default!;
     [Inject] private IQuestionService QuestionService { get; set; } = default!;
     [Inject] private ITestSessionService TestSessionService { get; set; } = default!;
@@ -184,16 +126,31 @@
     private int activeTests = 0;
     private int totalSubmissions = 0;
     private List<TestSession>? recentTestSessions;
+    private Guid userId;
+
+    private List<(string Label, string Icon, string Link)> QuickActions => new()
+    {
+        ("Create New Test", "plus", "/admin/create-test"),
+        ("Add Question", "question", "/admin/question-bank"),
+        ("Add University", "university", "/admin/universities"),
+        ("Export Results", "download", "/admin/results/export")
+    };
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDashboardData();
+        if (AuthenticationState is not null)
+        {
+            var authState = await AuthenticationState;
+            string? userIdString = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            userId = Guid.TryParse(userIdString, out var parsedId) ? parsedId : Guid.Empty;
+            await LoadDashboardData();
+        }
     }
 
     private async Task LoadDashboardData()
     {
-        totalUniversities = await UniversityService.GetTotalCountAsync();
-        totalQuestions = await QuestionService.GetTotalCountAsync();
+        totalUniversities = await UniversityService.GetTotalCountAsync(userId);
+        totalQuestions = await QuestionService.GetTotalCountAsync(userId);
         activeTests = await TestSessionService.GetActiveTestCountAsync();
         totalSubmissions = await TestSessionService.GetTotalSubmissionCountAsync();
         recentTestSessions = await TestSessionService.GetRecentTestSessionsAsync(1);

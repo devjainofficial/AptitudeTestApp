@@ -1,42 +1,20 @@
-﻿using AptitudeTestApp.Application.Interfaces;
+﻿using AptitudeTestApp.Application.DTOs;
+using AptitudeTestApp.Application.Interfaces;
 using AptitudeTestApp.Data.Models;
+using Mapster;
+using Microsoft.EntityFrameworkCore;
 
 namespace AptitudeTestApp.Application.Services;
 
-public class QuestionService(IRepository Repo) : IQuestionService
+public class QuestionService(IRepository repo)
+    : EntityService<QuestionDto, Question>(repo), IQuestionService
 {
-    public Task AddQuestionAsync(Question question)
+    public async Task<List<QuestionCategoryDto>> GetAllActiveCategoriesAsync()
     {
-        if (question == null) throw new ArgumentNullException(nameof(question));
+        List<QuestionCategory>? categories = await Repo.GetQueryable<QuestionCategory>()
+            .Where(c => c.IsActive)
+            .ToListAsync();
 
-        return Repo.AddAsync<Question>(question);
-    }
-
-    public Task DeleteQuestionAsync(Guid questionId)
-    {
-        if (questionId == Guid.Empty) throw new ArgumentException("Invalid question ID", nameof(questionId));
-
-        return Repo.DeleteAsync<Question>(questionId);
-    }
-
-    public async Task<List<Question>> GetAllQuestionsAsync()
-    {
-        var questions = await Repo.GetAllAsync<Question>();
-        
-        return [.. questions];
-    }
-
-    public Task<int> GetTotalCountAsync()
-    {
-        return Repo.GetAllAsync<Question>().ContinueWith(t => t.Result.Count());
-    }
-
-    public Task UpdateQuestionAsync(Question question)
-    {
-        if (question == null) throw new ArgumentNullException(nameof(question));
-
-        if (question.Id == Guid.Empty) throw new ArgumentException("Invalid question ID", nameof(question.Id));
-        
-        return Repo.UpdateAsync<Question>(question);
+        return categories.Adapt<List<QuestionCategoryDto>>();
     }
 }

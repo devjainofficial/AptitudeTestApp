@@ -1,4 +1,4 @@
-﻿@page "/test/{StudentSubmissionId:guid}/start/{Token}"
+﻿@page "/test/{StudentSubmissionId:guid}/start"
 @inject ITestSessionService TestSessionService
 @inject NavigationManager Navigation
 @inject JavaScriptService JSService
@@ -110,7 +110,6 @@ else
 }
 
 @code {
-    [Parameter] public required string Token { get; set; }
     [Parameter] public required Guid StudentSubmissionId { get; set; }
 
     private StudentSubmission? submission;
@@ -124,6 +123,6 @@ else
     private async Task StartTest()
     {
         await JSService.InitializeAntiCheat(StudentSubmissionId, submission.TestSession.MaxTabSwitches);
-        Navigation.NavigateTo($"/test/{StudentSubmissionId}/questions/{Token}");
+        Navigation.NavigateTo($"/test/{StudentSubmissionId}/questions");
     }
 }

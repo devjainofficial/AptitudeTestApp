@@ -1,0 +1,234 @@
+﻿@page "/admin/student-results"
+@inject IStudentSubmissionService SubmissionService
+@inject IUniversityService UniversityService
+@inject NavigationManager Navigation
+
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Data.Models
+@using AptitudeTestApp.Shared.Enums
+@using System.Security.Claims
+
+@rendermode InteractiveServer
+
+<PageTitle>Student Results</PageTitle>
+
+<div class="container mt-4">
+    <h2 class="mb-4">Student Submissions</h2>
+
+    <!-- Filters -->
+    <div class="card p-3 shadow-sm mb-3">
+        <div class="row g-2">
+            <div class="col-md-5">
+                <label class="form-label">University</label>
+                <select class="form-select" @onchange="OnUniversityFilterChanged">
+                    <option value="">All Universities</option>
+                    @foreach (var u in Universities)
+                    {
+                        <option value="@u.Id" selected="@(SelectedUniversityId == u.Id)">@u.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label class="form-label">Qualified</label>
+                <select class="form-select" @bind="QualifiedFilter">
+                    <option value="">All</option>
+                    <option value="true">Qualified Only</option>
+                    <option value="false">Unqualified Only</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-primary w-100" @onclick="ApplyFilters">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    @if (PagedResults is null || !PagedResults.Any())
+    {
+        <div class="alert alert-info">No submissions found.</div>
+    }
+    else
+    {
+        <table class="table table-hover table-bordered align-middle shadow-sm">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Score</th>
+                    <th>Percent</th>
+                    <th>Status</th>
+                    <th>University</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var submission in PagedResults)
+                {
+                    <tr>
+                        <td>@(++rowNumber)</td>
+                        <td>@submission.StudentName</td>
+                        <td>@submission.StudentEmail</td>
+                        <td>@submission.TotalScore / @submission.MaxPossibleScore</td>
+                        <td>
+                            <span class="badge bg-@(GetScoreBadge(submission.PercentageScore))">
+                                @submission.PercentageScore.ToString("F1")%
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-@(GetStatusBadge(submission.Status))">
+                                @submission.Status
+                            </span>
+                        </td>
+                        <td>@submission.TestSession.University.Name</td>
+                        <td>@submission.StartTime.ToString("g")</td>
+                        <td>@(submission.EndTime?.ToString("g") ?? "-")</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewDetails(submission.Id)">View</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <nav aria-label="Page navigation" class="mt-3">
+            <ul class="pagination justify-content-center">
+                <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                    <button class="page-link" @onclick="PreviousPage">Previous</button>
+                </li>
+                @for (int i = 1; i <= TotalPages; i++)
+                {
+                    <li class="page-item @(i == CurrentPage ? "active" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(i)">@i</button>
+                    </li>
+                }
+                <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                    <button class="page-link" @onclick="NextPage">Next</button>
+                </li>
+            </ul>
+        </nav>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+    private List<StudentSubmissionDto> AllSubmissions = new();
+    private List<StudentSubmissionDto> PagedResults = new();
+    private List<UniversityDto> Universities = new();
+
+    private Guid? SelectedUniversityId;
+    private string? QualifiedFilter;
+    private Guid creatorGuid;
+
+    private int PageSize = 10;
+    private int CurrentPage = 1;
+    private int TotalPages => (int)Math.Ceiling((double)AllSubmissions.Count / PageSize);
+    private int rowNumber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is null) return;
+
+        var authState = await AuthenticationState;
+        string CreatorId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Admin";
+
+        creatorGuid = Guid.TryParse(CreatorId, out var parsed) ? parsed : Guid.Empty;
+
+        Universities = await UniversityService.GetAllAsync(creatorGuid, 0, int.MaxValue);
+        await LoadSubmissionsAsync();
+    }
+
+    private async Task LoadSubmissionsAsync()
+    {
+        List<StudentSubmissionDto>? submissions = await SubmissionService.GetAllWithTestSessionAsync(creatorGuid);
+
+        if (SelectedUniversityId.HasValue)
+        {
+            submissions = submissions.Where(s => s.TestSession.UniversityId == SelectedUniversityId).ToList();
+        }
+
+        if (!string.IsNullOrEmpty(QualifiedFilter))
+        {
+            bool isQualified = QualifiedFilter == "true";
+            submissions = submissions.Where(s => (s.PercentageScore >= s.TestSession.PassingScore) == isQualified).ToList();
+        }
+
+        AllSubmissions = submissions;
+        CurrentPage = 1;
+        UpdatePagedResults();
+    }
+
+    private void UpdatePagedResults()
+    {
+        rowNumber = (CurrentPage - 1) * PageSize;
+        PagedResults = AllSubmissions
+            .OrderByDescending(s => s.StartTime)
+            .Skip((CurrentPage - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    private void NextPage()
+    {
+        if (CurrentPage < TotalPages)
+        {
+            CurrentPage++;
+            UpdatePagedResults();
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (CurrentPage > 1)
+        {
+            CurrentPage--;
+            UpdatePagedResults();
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        CurrentPage = page;
+        UpdatePagedResults();
+    }
+
+    private void ViewDetails(Guid id)
+    {
+        Navigation.NavigateTo($"/admin/student-results/{id}");
+    }
+
+    private void OnUniversityFilterChanged(ChangeEventArgs e)
+    {
+        SelectedUniversityId = Guid.TryParse(e.Value?.ToString(), out var id) ? id : null;
+    }
+
+    private async Task ApplyFilters()
+    {
+        await LoadSubmissionsAsync();
+    }
+
+    private string GetScoreBadge(decimal percentage)
+    {
+        return percentage switch
+        {
+            >= 90 => "success",
+            >= 70 => "info",
+            >= 50 => "warning",
+            _ => "danger"
+        };
+    }
+
+    private string GetStatusBadge(TestStatus status)
+    {
+        return status switch
+        {
+            TestStatus.Completed => "success",
+            TestStatus.InProgress => "warning",
+            TestStatus.Disqualified => "danger",
+            _ => "secondary"
+        };
+    }
+}

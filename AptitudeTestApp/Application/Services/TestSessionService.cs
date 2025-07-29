@@ -10,7 +10,7 @@ namespace AptitudeTestApp.Application.Services;
 
 public class TestSessionService(IRepository Repo) : ITestSessionService
 {
-    public async Task<TestSession> CreateTestSessionAsync(CreateTestSessionDto dto, string createdBy)
+    public async Task<TestSession> CreateTestSessionAsync(CreateTestSessionDto dto, Guid creatorId)
     {
         TestSession testSession = new ()
         {
@@ -24,7 +24,7 @@ public class TestSessionService(IRepository Repo) : ITestSessionService
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
             Token = GenerateUniqueToken(),
-            CreatedBy = createdBy
+            CreatorId = creatorId
         };
 
         await Repo.AddAsync<TestSession>(testSession);
@@ -270,20 +270,19 @@ public class TestSessionService(IRepository Repo) : ITestSessionService
             .ToListAsync();
     }
 
-    public async Task<List<TestSession>> GetAllActiveTestSessionAsync()
+    public async Task<List<TestSession>> GetAllTestSessionAsync()
     {
         return await Repo.GetQueryable<TestSession>()
             .Include(ts => ts.University)
-            .Where(t => t.IsActive)
             .ToListAsync();
     }
 
-    public async Task DeactivateTestSessionAsync(Guid id)
+    public async Task ToggleActiveTestSessionAsync(Guid id)
     {
         var session = await Repo.GetByIdAsync<TestSession>(id);
         if (session != null)
         {
-            session.IsActive = false;
+            session.IsActive = !session.IsActive;
             await Repo.SaveChangesAsync();
         }
     }

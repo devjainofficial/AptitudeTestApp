@@ -6,7 +6,7 @@ namespace AptitudeTestApp.Application.Interfaces;
 
 public interface ITestSessionService
 {
-    Task<TestSession> CreateTestSessionAsync(CreateTestSessionDto dto, string createdBy);
+    Task<TestSession> CreateTestSessionAsync(CreateTestSessionDto dto, Guid creatorId);
     Task<TestSession?> GetTestSessionByTokenAsync(string token);
     Task<List<TestSession>> GetTestSessionsByUniversityAsync(Guid universityId);
     Task<bool> IsTestSessionActiveAsync(string token);
@@ -17,8 +17,8 @@ public interface ITestSessionService
     Task<StudentSubmission?> GetSubmissionAsync(Guid submissionId);
     Task<int> GetActiveTestCountAsync();
     Task<int> GetTotalSubmissionCountAsync();
-    Task<List<TestSession>> GetAllActiveTestSessionAsync();
-    Task DeactivateTestSessionAsync(Guid id);
+    Task<List<TestSession>> GetAllTestSessionAsync();
+    Task ToggleActiveTestSessionAsync(Guid id);
     Task DeleteTestSessionAsync(Guid id);
     Task<List<TestSession>> GetRecentTestSessionsAsync(int days);
     string GenerateUniqueToken();

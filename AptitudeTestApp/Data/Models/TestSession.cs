@@ -23,7 +23,6 @@ public class TestSession : BaseEntity<Guid>
     public string Token { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? CreatedBy { get; set; }
 
     // Navigation Properties

@@ -17,7 +17,7 @@
         this.handleFullscreenChange = this.handleFullscreenChange.bind(this);
     }
 
-    async initialize(submissionId, maxTabSwitches = 3) {
+    async initialize(submissionId, creatorId, maxTabSwitches = 3) {
         if (this.isInitialized) return;
 
         this.submissionId = submissionId;

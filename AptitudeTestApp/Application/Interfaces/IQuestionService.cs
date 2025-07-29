@@ -1,12 +1,10 @@
-﻿using AptitudeTestApp.Data.Models;
+﻿using AptitudeTestApp.Application.DTOs;
+using AptitudeTestApp.Data.Models;
+using AptitudeTestApp.Shared.Enums;
 
 namespace AptitudeTestApp.Application.Interfaces;
 
-public interface IQuestionService
+public interface IQuestionService : IEntityService<QuestionDto, Guid>
 {
-    Task<List<Question>> GetAllQuestionsAsync();
-    Task AddQuestionAsync(Question question);
-    Task UpdateQuestionAsync(Question question);
-    Task DeleteQuestionAsync(Guid questionId);
-    Task<int> GetTotalCountAsync();
+    Task<List<QuestionCategoryDto>> GetAllActiveCategoriesAsync();
 }

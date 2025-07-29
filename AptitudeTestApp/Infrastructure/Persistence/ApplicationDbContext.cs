@@ -21,6 +21,23 @@ namespace AptitudeTestApp.Infrastructure.Persistence
         {
             base.OnModelCreating(builder);
 
+            foreach (var entityType in builder.Model.GetEntityTypes())
+            {
+                var clrType = entityType.ClrType;
+
+                // Check if it inherits from BaseEntity<Guid>
+                if (clrType.BaseType != null &&
+                    clrType.BaseType.IsGenericType &&
+                    clrType.BaseType.GetGenericTypeDefinition() == typeof(BaseEntity<>))
+                {
+                    var property = clrType.GetProperty("CreatorId");
+                    if (property != null)
+                    {
+                        builder.Entity(clrType).HasIndex("CreatorId");
+                    }
+                }
+            }
+
             // University
             builder.Entity<University>(entity =>
             {

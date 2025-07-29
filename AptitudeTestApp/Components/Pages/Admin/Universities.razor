@@ -1,0 +1,243 @@
+﻿@page "/admin/universities"
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@inject IUniversityService universityService
+@using AptitudeTestApp.Data.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@rendermode InteractiveServer
+@attribute [Authorize]
+
+
+@if (universities == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="px-4">
+        <div class="mb-3 d-flex justify-content-between">
+            <h2>University Management</h2>
+
+            <button class="btn btn-dark rounded-pill" @onclick="ShowAddModal">Add University</button>
+        </div>
+        <div class="mb-3 d-flex justify-content-between">
+            <div>
+                <button class="btn btn-outline-secondary me-2" @onclick="PreviousPage" disabled="@(!CanGoPrevious)">Previous</button>
+                <button class="btn btn-outline-secondary" @onclick="NextPage" disabled="@(!CanGoNext)">Next</button>
+            </div>
+        </div>
+
+        <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Contact Email</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var uni in universities)
+                {
+                    <tr>
+                        <td>@uni.Name</td>
+                        <td>@uni.Code</td>
+                        <td>@uni.ContactEmail</td>
+                        <td>
+                            @if (uni.IsActive)
+                            {
+                                <span class="badge bg-dark">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">Inactive</span>
+                            }
+                        </td>
+                        <td>@uni.CreatedAt.ToShortDateString()</td>
+                        <td>
+                            <button class="btn btn-sm btn-dark me-2" @onclick="() => ShowEditModal(uni)">Edit</button>
+                            <button class="@(uni.IsActive ? "btn btn-sm btn-danger me-2" : "btn btn-sm btn-dark me-2")"
+                                    @onclick="() => ToggleActivateUniversity(uni.Id)">
+                                @(uni.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteUniversity(uni.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- Add/Edit Modal -->
+@if (showModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@((selectedUniversity.Id == Guid.Empty) ? "Add University" : "Edit University")</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input class="form-control" @bind="selectedUniversity.Name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Code</label>
+                        <input class="form-control" @bind="selectedUniversity.Code" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Contact Email</label>
+                        <input class="form-control" @bind="selectedUniversity.ContactEmail" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                    <button class="btn btn-primary" @onclick="SaveUniversity">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationState { get; set; }
+    private List<UniversityDto> universities = new();
+    private UniversityDto selectedUniversity = new();
+    private bool showModal = false;
+    Guid userId;
+
+    // Pagination
+    private int currentPage = 1;
+    private const int pageSize = 10;
+    private int totalCount = 0;
+    private int TotalPages => (int)Math.Ceiling((double)totalCount / pageSize);
+    private bool CanGoPrevious => currentPage > 1;
+    private bool CanGoNext => currentPage < TotalPages;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is not null)
+        {
+            var authState = await AuthenticationState;
+
+            string? userIdString = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (Guid.TryParse(userIdString, out var parsedUserId))
+                userId = parsedUserId;
+            else
+                userId = Guid.Empty;
+
+            await LoadUniversities();
+        }
+    }
+
+    private async Task LoadUniversities()
+    {
+        totalCount = await universityService.GetTotalCountAsync(userId);
+        universities = await universityService.GetAllAsync(userId, (currentPage - 1) * pageSize, pageSize);
+    }
+
+    private void ShowAddModal()
+    {
+        selectedUniversity = new();
+        showModal = true;
+    }
+
+    private void ShowEditModal(UniversityDto uni)
+    {
+        selectedUniversity = new UniversityDto
+        {
+            Id = uni.Id,
+            Name = uni.Name,
+            Code = uni.Code,
+            ContactEmail = uni.ContactEmail
+        };
+
+        showModal = true;     
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        selectedUniversity = new();
+    }
+
+    private async Task SaveUniversity()
+    {
+        if (AuthenticationState is not null)
+        {
+            try
+            {
+                var authState = await AuthenticationState;
+
+                userId = GetUserIdFromAuthState(authState);
+
+                if (selectedUniversity.Id == Guid.Empty)
+                    await CreateNewUniversity(selectedUniversity, userId);
+                else
+                    await UpdateExistingUniversity(selectedUniversity, userId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing university: {ex.Message}");
+            }
+        }
+
+        showModal = false;
+        await LoadUniversities();
+    }
+
+    private async Task ToggleActivateUniversity(Guid id)
+    {
+        await universityService.ToggleActivateUniversityAsync(id);
+        await LoadUniversities();
+    }
+
+    private async Task DeleteUniversity(Guid id)
+    {
+        await universityService.DeleteAsync(id, userId);
+        await LoadUniversities();
+    }
+
+    private async Task NextPage()
+    {
+        if (CanGoNext)
+        {
+            currentPage++;
+            await LoadUniversities();
+        }
+    }
+
+    private async Task PreviousPage()
+    {
+        if (CanGoPrevious)
+        {
+            currentPage--;
+            await LoadUniversities();
+        }
+    }
+
+    private Guid GetUserIdFromAuthState(AuthenticationState authState)
+    {
+        string? userIdString = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(userIdString, out var parsedUserId) ? parsedUserId : Guid.Empty;
+    }
+
+    private async Task CreateNewUniversity(UniversityDto university, Guid userId)
+    {
+        university.IsActive = true;
+        await universityService.CreateAsync(university, userId);
+    }
+
+    private async Task UpdateExistingUniversity(UniversityDto university, Guid userId)
+    {
+        await universityService.UpdateAsync(university, userId);
+    }
+}

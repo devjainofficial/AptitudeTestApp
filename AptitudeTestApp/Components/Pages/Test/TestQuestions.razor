@@ -1,4 +1,4 @@
-﻿@page "/test/{StudentSubmissionId:guid}/questions/{Token}"
+﻿@page "/test/{StudentSubmissionId:guid}/questions"
 @inject ITestSessionService TestSessionService
 @inject JavaScriptService JSService
 @inject NavigationManager Navigation
@@ -79,7 +79,6 @@ else
 }
 
 @code {
-    [Parameter] public required string Token { get; set; }
     [Parameter] public required Guid StudentSubmissionId { get; set; }
 
     private StudentSubmission? submission;

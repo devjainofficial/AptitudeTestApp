@@ -15,7 +15,6 @@ public class Question : BaseEntity<Guid>
     public QuestionDifficulty DifficultyLevel { get; set; } = QuestionDifficulty.Easy;
     public int Points { get; set; } = 1;
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? CreatedBy { get; set; }
 
     // Navigation Properties

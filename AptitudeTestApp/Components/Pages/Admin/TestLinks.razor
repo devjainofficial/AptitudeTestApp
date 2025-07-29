@@ -1,7 +1,13 @@
 ﻿@page "/admin/test-links"
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Data.Models
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
 @inject ITestSessionService testSessionService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+@attribute [Authorize]
 
 @rendermode InteractiveServer
 
@@ -47,8 +53,21 @@ else
                         }
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-warning me-2" @onclick="() => DeactivateSession(session.Id)">Deactivate</button>
-                        <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(session.Id)">Delete</button>
+                        <div class="mt-2">
+                            @if (session.IsActive)
+                            {
+                                <button class="btn btn-dark btn-sm me-2"
+                                        title="Copy Test Link"
+                                        @onclick="() => CopyToClipboard(session)">
+                                    <i class="bi bi-clipboard"></i> Copy Link
+                                </button>
+                            }
+                            <button class="@(session.IsActive ? "btn btn-sm btn-danger me-2" : "btn btn-sm btn-dark me-2")"
+                                    @onclick="() => DeactivateSession(session.Id)">
+                                @(session.IsActive ? "Deactivate" : "Activate")
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDelete(session.Id)">Delete</button>
+                        </div>
                     </td>
                 </tr>
             }
@@ -78,22 +97,31 @@ else
 }
 
 @code {
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
     private List<TestSession> testSessions = new();
     private Guid deleteConfirmId = Guid.Empty;
+    private Guid creatorGuid;
 
     protected override async Task OnInitializedAsync()
     {
+        if (AuthenticationState is null) return;
+
+        var authState = await AuthenticationState;
+        string CreatorId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Admin";
+
+        creatorGuid = Guid.TryParse(CreatorId, out var parsed) ? parsed : Guid.Empty;
+
         await LoadTestSessionsAsync();
     }
 
     private async Task LoadTestSessionsAsync()
     {
-        testSessions = await testSessionService.GetAllActiveTestSessionAsync();
+        testSessions = await testSessionService.GetAllTestSessionAsync();
     }
 
     private async Task DeactivateSession(Guid id)
     {
-        await testSessionService.DeactivateTestSessionAsync(id);
+        await testSessionService.ToggleActiveTestSessionAsync(id);
         await LoadTestSessionsAsync();
     }
 
@@ -107,5 +135,33 @@ else
         await testSessionService.DeleteTestSessionAsync(deleteConfirmId);
         deleteConfirmId = Guid.Empty;
         await LoadTestSessionsAsync();
+    }
+
+    private string GetTestLink(TestSession session)
+    {
+        string? baseUrl = Navigation.BaseUri.TrimEnd('/');
+        
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            baseUrl = Navigation.Uri.TrimEnd('/');
+        }
+        
+        return $"{baseUrl}/test/{session.UniversityId}/{session.Token}";
+    }
+
+    private async Task CopyToClipboard(TestSession session)
+    {
+        var link = GetTestLink(session);
+
+        try
+        {
+            await JS.InvokeVoidAsync("copyText", link);
+            ToastService.Success("Link Copied", $"Test link for '{session.University.Name}' copied to clipboard!", 5000);
+        }
+        catch (JSException ex)
+        {
+            ToastService.Error("Failed", "Failed to copy link.", 5000);
+            Console.WriteLine("JS Error copying: " + ex.Message);
+        }
     }
 }

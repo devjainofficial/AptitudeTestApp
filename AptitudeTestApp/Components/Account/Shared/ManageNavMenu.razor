@@ -3,29 +3,67 @@
 
 @inject SignInManager<ApplicationUser> SignInManager
 
-<ul class="nav nav-pills flex-column">
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage" Match="NavLinkMatch.All">Profile</NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/Email">Email</NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/ChangePassword">Password</NavLink>
-    </li>
-    @if (hasExternalLogins)
-    {
-        <li class="nav-item">
-            <NavLink class="nav-link" href="Account/Manage/ExternalLogins">External logins</NavLink>
-        </li>
+<style>
+    .active-link {
+        background-color: #e9f2ff;
+        color: #000 !important;
+        font-weight: 600;
+        border-left: 4px solid #000;
     }
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/TwoFactorAuthentication">Two-factor authentication</NavLink>
-    </li>
-    <li class="nav-item">
-        <NavLink class="nav-link" href="Account/Manage/PersonalData">Personal data</NavLink>
-    </li>
-</ul>
+</style>
+
+<div class="card shadow-sm border-0 rounded-3">
+    <div class="card-header bg-dark text-white fw-semibold">
+        Account Settings
+    </div>
+    <ul class="list-group list-group-flush">
+        <li class="list-group-item p-0">
+            <NavLink href="Account/Manage" Match="NavLinkMatch.All"
+                     class="list-group-item-action nav-link d-block py-2 px-3"
+                     activeClass="active-link">
+                <i class="bi bi-person-circle me-2"></i> Profile
+            </NavLink>
+        </li>
+        <li class="list-group-item p-0">
+            <NavLink href="Account/Manage/Email"
+                     class="list-group-item-action nav-link d-block py-2 px-3"
+                     activeClass="active-link">
+                <i class="bi bi-envelope me-2"></i> Email
+            </NavLink>
+        </li>
+        <li class="list-group-item p-0">
+            <NavLink href="Account/Manage/ChangePassword"
+                     class="list-group-item-action nav-link d-block py-2 px-3"
+                     activeClass="active-link">
+                <i class="bi bi-lock me-2"></i> Password
+            </NavLink>
+        </li>
+        @if (hasExternalLogins)
+        {
+            <li class="list-group-item p-0">
+                <NavLink href="Account/Manage/ExternalLogins"
+                         class="list-group-item-action nav-link d-block py-2 px-3"
+                         activeClass="active-link">
+                    <i class="bi bi-box-arrow-in-right me-2"></i> External Logins
+                </NavLink>
+            </li>
+        }
+        <li class="list-group-item p-0">
+            <NavLink href="Account/Manage/TwoFactorAuthentication"
+                     class="list-group-item-action nav-link d-block py-2 px-3"
+                     activeClass="active-link">
+                <i class="bi bi-shield-lock me-2"></i> Two-Factor Authentication
+            </NavLink>
+        </li>
+        <li class="list-group-item p-0">
+            <NavLink href="Account/Manage/PersonalData"
+                     class="list-group-item-action nav-link d-block py-2 px-3"
+                     activeClass="active-link">
+                <i class="bi bi-file-earmark-text me-2"></i> Personal Data
+            </NavLink>
+        </li>
+    </ul>
+</div>
 
 @code {
     private bool hasExternalLogins;

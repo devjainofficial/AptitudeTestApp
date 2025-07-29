@@ -34,8 +34,6 @@ public class StudentSubmission : BaseEntity<Guid>
     [MaxLength(45)]
     public string? IpAddress { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
     // Navigation Properties
     public virtual TestSession TestSession { get; set; } = null!;
     public virtual ICollection<StudentAnswer> StudentAnswers { get; set; } = new List<StudentAnswer>();

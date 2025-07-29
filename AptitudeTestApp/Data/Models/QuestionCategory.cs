@@ -11,7 +11,6 @@ public class QuestionCategory : BaseEntity<Guid>
     public string? Description { get; set; }
 
     public bool IsActive { get; set; } = true;
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     // Navigation Properties
     public virtual ICollection<Question> Questions { get; set; } = new List<Question>();

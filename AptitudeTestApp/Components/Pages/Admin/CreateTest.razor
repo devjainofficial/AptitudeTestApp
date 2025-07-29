@@ -3,48 +3,171 @@
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Data.Models
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
 @using System.Security.Claims
-@inject ITestSessionService TestSession
+
+@inject ITestSessionService TestSessionService
+@inject IUniversityService UniversityService
+@inject IQuestionService QuestionService
 @inject NavigationManager Navigation
+
+@rendermode InteractiveServer
 
 @attribute [Authorize]
 
 <PageTitle>Create Test</PageTitle>
 
-<h3>CreateTest</h3>
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+}
+else
+{
+    <div class="card p-4 shadow-sm">
+        <h2 class="mb-2 text-dark">Create New Test</h2>
+        <EditForm Model="@TestSessionDto" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Test Name</label>
+                        <InputText class="form-control" @bind-Value="TestSessionDto.TestName" placeholder="Enter test name..." />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">University</label>
+                        <InputSelect class="form-select" @bind-Value="SelectedUniversityId">
+                            <option value="" selected>-- Select University --</option>
+                            @foreach (var university in Universities)
+                            {
+                                <option value="@university.Id">@university.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Questions</label>
+                    <div class="border rounded p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                        @foreach (var question in AllQuestions)
+                        {
+                            <div class="form-check mb-2">
+                                <input type="checkbox"
+                                        class="form-check-input"
+                                        id="@($"q-{question.Id}")"
+                                        value="@question.Id"
+                                        checked="@SelectedQuestionIds.Contains(question.Id)"
+                                        @onchange="(e) => OnQuestionSelectionChanged(e, question.Id)" />
+                                <label class="form-check-label" for="@($"q-{question.Id}")">
+                                    @question.QuestionText
+                                </label>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Time Limit (minutes)</label>
+                        <InputNumber class="form-control" @bind-Value="TestSessionDto.TimeLimit" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Passing Score</label>
+                        <InputNumber class="form-control" @bind-Value="TestSessionDto.PassingScore" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Max Tab Switches</label>
+                        <InputNumber class="form-control" @bind-Value="TestSessionDto.MaxTabSwitches" />
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Start Date</label>
+                        <InputDate class="form-control" @bind-Value="TestSessionDto.StartDate" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">End Date</label>
+                        <InputDate class="form-control" @bind-Value="TestSessionDto.EndDate" />
+                    </div>
+                </div>
+
+                <div class="d-grid mt-4">
+                    <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-rocket-takeoff me-2"></i> Create Test
+                    </button>
+                </div>
+        </EditForm>
+    </div>
+}
 
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationState { get; set; }
 
+    private CreateTestSessionDto TestSessionDto = new();
+    private Guid SelectedUniversityId;
+    private List<Guid> SelectedQuestionIds = new();
+    private List<UniversityDto> Universities = new();
+    private List<QuestionDto> AllQuestions = new();
+
+    private bool IsLoading = true;
+    private Guid creatorGuid;
+
     protected override async Task OnInitializedAsync()
     {
-        if (AuthenticationState is not null)
+        if (AuthenticationState is null) return;
+
+        var authState = await AuthenticationState;
+        string CreatorId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Admin";
+
+        creatorGuid = Guid.TryParse(CreatorId, out var parsed) ? parsed : Guid.Empty;
+
+        Universities = await UniversityService.GetAllActiveUniversity(creatorGuid);
+        AllQuestions = await QuestionService.GetAllAsync(creatorGuid, 0, 100);
+
+        IsLoading = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (creatorGuid == Guid.Empty) return;
+
+        TestSessionDto.UniversityId = SelectedUniversityId;
+        TestSessionDto.SelectedQuestionIds = SelectedQuestionIds;
+        TestSessionDto.TotalQuestions = TestSessionDto.SelectedQuestionIds.Count;
+        TestSessionDto.CreatorId = creatorGuid;
+
+        TestSession result = await TestSessionService.CreateTestSessionAsync(TestSessionDto, creatorGuid);
+
+        if (result is not null)
         {
-            var authState = await AuthenticationState;
-
-            var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            var testSessionDto = new CreateTestSessionDto
-            {
-                TestName = "Sample Test",
-                UniversityId = new Guid("9823cfed-3435-4fa0-a1e0-816b1a190b78"),
-                TimeLimit = 60,
-                PassingScore = 70,
-                MaxTabSwitches = 3,
-                TotalQuestions = 2,
-                StartDate = DateTime.UtcNow,
-                EndDate = DateTime.UtcNow.AddDays(1),
-                SelectedQuestionIds = new List<Guid>
-                {
-                    new Guid("a996792b-3a0b-491b-859d-6eba0607a003"),
-                    new Guid("ed59e8cd-71f2-42cd-aa78-db5633f9ba07")
-                }
-            };
-
-            TestSession? testSession = await TestSession.CreateTestSessionAsync(testSessionDto, userId ?? "Admin");
-
-            Navigation.NavigateTo($"/test/{testSession.UniversityId}/{testSession.Token}");
+            Navigation.NavigateTo($"/admin/test-links");
         }
     }
+
+    private void OnQuestionSelectionChanged(ChangeEventArgs e, Guid questionId)
+    {
+        bool isChecked = e?.Value?.ToString()?.ToLowerInvariant() == "true";
+
+        if (isChecked)
+        {
+            if (!SelectedQuestionIds.Contains(questionId))
+                SelectedQuestionIds.Add(questionId);
+        }
+        else
+        {
+            SelectedQuestionIds.Remove(questionId);
+        }
+    }
+
 }

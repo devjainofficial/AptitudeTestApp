@@ -1,0 +1,263 @@
+﻿@page "/admin/add-question"
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Shared.Dialogs
+@using Microsoft.AspNetCore.Authorization
+@using Radzen
+@using Radzen.Blazor
+@using AptitudeTestApp.Shared.Enums
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthProvider
+
+@attribute [Authorize]
+
+@rendermode InteractiveServer
+
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h3 class="mb-0 fw-bold">Add Question</h3>
+
+    <div>
+        <RadzenButton Text="Save"
+                      ButtonType="ButtonType.Submit"
+                      IsBusy="@isLoading"
+                      Disabled="@(!IsFormValid())"
+                      Class="me-2" />
+
+        <RadzenButton Text="Reset"
+                      Click="@Reset"
+                      ButtonStyle="ButtonStyle.Light" />
+    </div>
+</div>
+
+<RadzenTemplateForm Data="@question" Submit="@((QuestionDto args) => SaveQuestion(args))">
+    <RadzenFieldset Text="Question Details">
+        <div class="mb-3">
+            <RadzenLabel Text="Question Text" />
+            <RadzenTextBox @bind-Value="question.QuestionText" Name="QuestionText" Placeholder="Enter question" Style="width:100%" />
+            <RadzenRequiredValidator Component="QuestionText" Text="Question text is required" />
+        </div>
+
+        <div class="mb-3">
+            <RadzenLabel Text="Category" />
+            <RadzenDropDown @bind-Value="question.CategoryId"
+                            Data="@categories"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Placeholder="Select Category"
+                            Style="width:100%" />
+        </div>
+
+        <div class="mb-3">
+            <RadzenLabel Text="Difficulty Level" />
+            <RadzenDropDown @bind-Value="question.DifficultyLevel"
+                            Data="@difficultyLevels"
+                            Style="width:100%" />
+        </div>
+
+        <div class="mb-3">
+            <RadzenLabel Text="Points" />
+            <RadzenNumeric TValue="int" @bind-Value="question.Points" Min="1" Max="10" Style="width:100%" />
+        </div>
+
+        <div class="mb-3">
+            <RadzenCheckBox @bind-Value="question.IsActive" Name="IsActive" />
+            <RadzenLabel Text="Is Active" Component="IsActive" Style="margin-left: 8px;" />
+        </div>
+    </RadzenFieldset>
+
+    <RadzenFieldset Text="Options">
+        @if (question.Options?.Any() == true)
+        {
+            @for (int i = 0; i < question.Options.Count; i++)
+            {
+                var optionIndex = i; // Capture loop variable
+                var opt = question.Options[optionIndex];
+
+                <div class="row mb-2 align-items-center">
+                    <div class="col-8">
+                        <RadzenTextBox @bind-Value="opt.OptionText"
+                                       Style="width:100%"
+                                       Placeholder="Option text..." />
+                    </div>
+                    <div class="col-2">
+                        <RadzenCheckBox @bind-Value="opt.IsCorrect" Name="@($"IsCorrect_{optionIndex}")" />
+                        <RadzenLabel Text="Correct?" Component="@($"IsCorrect_{optionIndex}")" Style="margin-left: 8px;" />
+                    </div>
+                    <div class="col-2">
+                        <RadzenButton Icon="delete"
+                                      ButtonStyle="ButtonStyle.Danger"
+                                      Size="ButtonSize.Small"
+                                      Click="@(() => RemoveOption(optionIndex))"
+                                      Disabled="@(question.Options.Count <= 2)" />
+                    </div>
+                </div>
+            }
+        }
+
+        <RadzenButton Text="Add Option"
+                      Icon="add"
+                      Click="@AddOption"
+                      ButtonStyle="ButtonStyle.Light"
+                      Disabled="@(question.Options?.Count >= 6)" />
+    </RadzenFieldset>
+
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public EventCallback OnQuestionAdded { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private QuestionDto question = new();
+    private List<QuestionCategoryDto> categories = new();
+    private QuestionDifficulty[] difficultyLevels = Enum.GetValues<QuestionDifficulty>();
+    private bool isLoading = false;
+
+    [Inject] IQuestionService QuestionService { get; set; } = default!;
+    [Inject] IToastService ToastService { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategories();
+        InitializeQuestion();
+    }
+
+    public async Task Show(Guid creatorId)
+    {
+        question = new QuestionDto
+        {
+            CreatorId = creatorId,
+            Options = new List<QuestionOptionDto>
+            {
+                new QuestionOptionDto(),
+                new QuestionOptionDto()
+            },
+            IsActive = true,
+            Points = 1
+        };
+
+        if (!categories.Any())
+        {
+            await LoadCategories();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task LoadCategories()
+    {
+        try
+        {
+            categories = await QuestionService.GetAllActiveCategoriesAsync();
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error("Failed to load categories", ex.Message, 5000);
+        }
+    }
+
+    private void InitializeQuestion()
+    {
+        question = new QuestionDto
+        {
+            Options = new List<QuestionOptionDto>
+            {
+                new QuestionOptionDto(),
+                new QuestionOptionDto()
+            },
+            IsActive = true,
+            Points = 1
+        };
+    }
+
+    private void AddOption()
+    {
+        if (question.Options == null)
+            question.Options = new List<QuestionOptionDto>();
+
+        if (question.Options.Count < 6) // Limit maximum options
+        {
+            question.Options.Add(new QuestionOptionDto());
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveOption(int index)
+    {
+        if (question.Options != null && index >= 0 && index < question.Options.Count && question.Options.Count > 2)
+        {
+            question.Options.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveQuestion(QuestionDto model)
+    {
+        if (!IsFormValid())
+        {
+            ToastService.Error(string.Empty, "Please fill all required fields and ensure at least one correct answer is selected.", 5000);
+            return;
+        }
+
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var userId = await GetCurrentUserId();
+
+            await QuestionService.CreateAsync(question, userId);
+
+            // Uncomment and modify based on your service return type
+            // if (result.IsSuccess)
+            // {
+            ToastService.Success("Question added successfully", "", 5000);
+            await OnQuestionAdded.InvokeAsync();
+            Reset();
+            // }
+            // else
+            // {
+            //     ToastService.Error("Failed to save question", result.ErrorMessage ?? "Unknown error");
+            // }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Error("Failed to save question", ex.Message, 5000);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task<Guid> GetCurrentUserId()
+    {
+        if (AuthenticationState is not null)
+        {
+            var authState = await AuthenticationState;
+            string? userIdString = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(userIdString, out var parsedUserId))
+                return parsedUserId;
+        }
+        return Guid.Empty;
+    }
+
+    private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(question.QuestionText) &&
+               question.CategoryId != Guid.Empty &&
+               question.Options != null &&
+               question.Options.Count >= 2 &&
+               question.Options.All(o => !string.IsNullOrWhiteSpace(o.OptionText)) &&
+               question.Options.Any(o => o.IsCorrect);
+    }
+
+    private void Reset()
+    {
+        InitializeQuestion();
+        isLoading = false;
+        StateHasChanged();
+    }
+}

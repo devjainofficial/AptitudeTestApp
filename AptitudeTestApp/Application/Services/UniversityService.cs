@@ -1,6 +1,7 @@
 ﻿using AptitudeTestApp.Application.DTOs;
 using AptitudeTestApp.Application.Interfaces;
 using AptitudeTestApp.Data.Models;
+using AptitudeTestApp.Shared.Enums;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,7 +22,6 @@ public class UniversityService(IRepository Repo)
         return universities.Adapt<List<UniversityDto>>();
     }
 
-
     public async Task ToggleActivateUniversityAsync(Guid id)
     {
         University? entity = await Repo.GetByIdAsync<University>(id);
@@ -30,5 +30,29 @@ public class UniversityService(IRepository Repo)
 
         entity.IsActive = !entity.IsActive;
         await Repo.UpdateAsync(entity);
+    }
+
+    public async Task<(List<UniversityDto> universityList, int totalUniversities)> GetUniversitiesByFiltersAsync(
+        Guid creatorId,
+        int skip,
+        int take,
+        bool? IsActive
+    )
+    {
+        var query = Repo.GetQueryable<University>()
+            .Where(q => q.CreatorId == creatorId);
+
+        if (IsActive.HasValue)
+            query = query.Where(q => q.IsActive == IsActive.Value);
+
+        int totalQuestions = query.Count();
+
+        List<UniversityDto>? UniversitiesList = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync()
+            .ContinueWith(task => task.Result.Adapt<List<UniversityDto>>());
+
+        return (UniversitiesList, totalQuestions);
     }
 }

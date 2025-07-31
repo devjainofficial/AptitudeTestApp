@@ -79,5 +79,4 @@ public abstract class EntityService<TDto, TEntity>(IRepository repository) : IEn
 
         return count;
     }
-
 }

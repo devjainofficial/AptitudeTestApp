@@ -1,4 +1,5 @@
-﻿using AptitudeTestApp.Shared.Enums;
+﻿using AptitudeTestApp.Data.Models;
+using AptitudeTestApp.Shared.Enums;
 
 namespace AptitudeTestApp.Application.DTOs;
 
@@ -21,5 +22,7 @@ public class StudentSubmissionDto : BaseDto<Guid>
     public string? IpAddress { get; set; }
 
     public virtual TestSessionDto TestSession { get; set; } = null!;
+    public virtual ICollection<StudentAnswerDto> StudentAnswers { get; set; } = null!;
+    public virtual ICollection<AntiCheatLogDto> AntiCheatLogs { get; set; } = null!;
 
 }

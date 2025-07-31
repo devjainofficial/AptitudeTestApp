@@ -4,3 +4,36 @@
     color: #222;
 }
 
+.form-control:focus, .form-select:focus {
+    box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.25) !important;
+    border-color: #212529 !important;
+}
+
+.btn:focus, .btn:active:focus {
+    box-shadow: 0 0 0 0.25rem rgba(0, 0, 0, 0.25);
+    border-color: #212529;
+}
+
+.checkbox-dark:checked,
+.form-check-input:checked,
+.dropdown-item:active,
+.rz-chkbox-box.rz-state-active,
+.rz-dropdown-item.rz-state-highlight,
+.rz-numeric-button-icon {
+    background-color: #212529 !important;
+    border-color: #212529 !important;
+}
+
+.rz-dropdown-item:hover {
+    background-color: #474747 !important;
+    border-color: #212529 !important;
+}
+
+.checkbox-dark:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(33, 37, 41, 0.25) !important;
+    border-color: #212529 !important;
+}
+
+.valid.modified:not([type=checkbox]) {
+    outline: 2px solid #fff !important;
+}

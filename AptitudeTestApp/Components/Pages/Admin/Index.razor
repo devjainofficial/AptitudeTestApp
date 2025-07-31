@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using AptitudeTestApp.Application.DTOs
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Application.Services
 @using AptitudeTestApp.Data.Models
@@ -6,6 +7,8 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.Security.Claims
 @attribute [Authorize]
+
+@rendermode InteractiveServer
 
 <PageTitle>Admin Dashboard</PageTitle>
 
@@ -120,6 +123,7 @@
     [Inject] private IUniversityService UniversityService { get; set; } = default!;
     [Inject] private IQuestionService QuestionService { get; set; } = default!;
     [Inject] private ITestSessionService TestSessionService { get; set; } = default!;
+    [Inject] private IStudentSubmissionService StudentSubmissionService { get; set; } = default!;
 
     private int totalUniversities = 0;
     private int totalQuestions = 0;
@@ -131,7 +135,7 @@
     private List<(string Label, string Icon, string Link)> QuickActions => new()
     {
         ("Create New Test", "plus", "/admin/create-test"),
-        ("Add Question", "question", "/admin/question-bank"),
+        ("Add Question", "question", "/admin/add-question"),
         ("Add University", "university", "/admin/universities"),
         ("Export Results", "download", "/admin/results/export")
     };
@@ -151,8 +155,8 @@
     {
         totalUniversities = await UniversityService.GetTotalCountAsync(userId);
         totalQuestions = await QuestionService.GetTotalCountAsync(userId);
-        activeTests = await TestSessionService.GetActiveTestCountAsync();
-        totalSubmissions = await TestSessionService.GetTotalSubmissionCountAsync();
-        recentTestSessions = await TestSessionService.GetRecentTestSessionsAsync(1);
+        activeTests = await TestSessionService.GetActiveTestCountAsync(userId);
+        totalSubmissions = await StudentSubmissionService.GetTotalSubmissionCountAsync(userId);
+        recentTestSessions = await TestSessionService.GetRecentTestSessionsAsync(1, userId);
     }
 }

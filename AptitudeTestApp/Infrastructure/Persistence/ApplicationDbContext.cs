@@ -79,7 +79,7 @@ namespace AptitudeTestApp.Infrastructure.Persistence
                 entity.HasOne(d => d.University)
                     .WithMany(p => p.TestSessions)
                     .HasForeignKey(d => d.UniversityId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // TestSessionQuestion

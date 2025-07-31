@@ -1,7 +1,9 @@
-﻿@page "/test/completed/{submissionId:guid}"
+﻿@page "/test/completed/{SubmissionId:guid}"
+@using AptitudeTestApp.Application.DTOs
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Data.Models
 @inject ITestSessionService TestSessionService
+@inject IStudentSubmissionService StudentSubmissionService
 @inject NavigationManager Navigation
 
 <PageTitle>Test Completed</PageTitle>
@@ -14,120 +16,129 @@
         </div>
     </div>
 }
-else
+else if (!submission.TestSession.ShowResult && !submission.IsDisqualified)
 {
-    <div class="container mt-5">
+    <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-md-8">
-                <div class="card shadow-lg">
-                    <div class="card-header @(submission.IsDisqualified ? "bg-danger" : (submission.PercentageScore >= submission.TestSession.PassingScore ? "bg-success" : "bg-warning")) text-white text-center">
-                        <h3 class="mb-0">
+                <div class="border border-dark rounded-3 p-4 text-center">
+                    <h3 class="fw-bold text-dark mb-3">Test Completed</h3>
+                    <p class="text-muted mb-4">Thank you for submitting the test.</p>
+                    <p class="text-muted">Your responses have been recorded successfully.</p>
+                    <p class="text-muted">The test results will be shared by the university separately.</p>
+                    <div class="mt-4">
+                        <i class="bi bi-envelope-paper text-dark" style="font-size: 3rem;"></i>
+                        <p class="mt-3">For more information, contact your university.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="border border-dark rounded-3 p-4 bg-white">
+                    <div class="text-center border-bottom border-dark pb-3 mb-4">
+                        <h3 class="fw-bold text-dark">
                             @if (submission.IsDisqualified)
                             {
-                                <i class="fas fa-times-circle">Test Disqualified</i>
-                                
+                                <i class="bi bi-x-circle me-2 text-danger">Test Disqualified</i>
                             }
                             else if (submission.PercentageScore >= submission.TestSession.PassingScore)
                             {
-                                <i class="fas fa-check-circle">Test Passed</i>
-                                
+                                <i class="bi bi-check-circle me-2 text-success">Test Passed</i>
                             }
                             else
                             {
-                                <i class="fas fa-exclamation-circle">Test Not Passed</i>
-                                
+                                <i class="bi bi-exclamation-circle me-2 text-warning">Test Not Passed</i>
                             }
                         </h3>
-                        <p class="mb-0">@submission.TestSession.TestName</p>
+                        <p class="text-muted">@submission.TestSession.TestName</p>
                     </div>
-                    <div class="card-body">
-                        @if (submission.IsDisqualified)
-                        {
-                            <div class="alert alert-danger">
-                                <h5>Test Disqualified</h5>
-                                <p><strong>Reason:</strong> @submission.DisqualificationReason</p>
-                                <p>Your test has been automatically submitted due to violation of test rules.</p>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="row text-center mb-4">
-                                <div class="col-md-4">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h4 class="text-primary">@submission.PercentageScore.ToString("F1")%</h4>
-                                            <small class="text-muted">Your Score</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h4 class="text-info">@submission.TotalScore/@submission.MaxPossibleScore</h4>
-                                            <small class="text-muted">Points Earned</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="card bg-light">
-                                        <div class="card-body">
-                                            <h4 class="text-secondary">@FormatTime(submission.TimeTaken ?? 0)</h4>
-                                            <small class="text-muted">Time Taken</small>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        }
 
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <strong>Student Name:</strong> @submission.StudentName
+                    @if (submission.IsDisqualified)
+                    {
+                        <div class="alert alert-danger">
+                            <h5>Test Disqualified</h5>
+                            <p><strong>Reason:</strong> @submission.DisqualificationReason</p>
+                            <p>Your test was submitted automatically due to rule violations.</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row text-center mb-4">
+                            <div class="col-md-4">
+                                <div class="border border-dark rounded-2 py-3">
+                                    <h4 class="text-dark">@submission.PercentageScore.ToString("F1")%</h4>
+                                    <small class="text-muted">Your Score</small>
+                                </div>
                             </div>
-                            <div class="col-md-6">
-                                <strong>Email:</strong> @submission.StudentEmail
+                            <div class="col-md-4">
+                                <div class="border border-dark rounded-2 py-3">
+                                    <h4 class="text-dark">@submission.TotalScore / @submission.MaxPossibleScore</h4>
+                                    <small class="text-muted">Points Earned</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="border border-dark rounded-2 py-3">
+                                    <h4 class="text-dark">@FormatTime(submission.TimeTaken ?? 0)</h4>
+                                    <small class="text-muted">Time Taken</small>
+                                </div>
                             </div>
                         </div>
+                    }
 
-                        <div class="row mb-4">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>Student Name:</strong> @submission.StudentName
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Email:</strong> @submission.StudentEmail
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <strong>University:</strong> @submission.TestSession.University.Name
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Test Date:</strong> @submission.StartTime.ToString("MMM dd, yyyy HH:mm")
+                        </div>
+                    </div>
+
+                    @if (submission.TabSwitchCount > 0)
+                    {
+                        <div class="alert alert-warning">
+                            <strong>Tab Switches Detected:</strong> @submission.TabSwitchCount
+                            <br />
+                            <small>Note: Excessive tab switching may impact your test validity.</small>
+                        </div>
+                    }
+
+                    @if (!submission.IsDisqualified)
+                    {
+                        <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>University:</strong> @submission.TestSession.University.Name
+                                <strong>Passing Score:</strong> @submission.TestSession.PassingScore%
                             </div>
                             <div class="col-md-6">
-                                <strong>Test Date:</strong> @submission.StartTime.ToString("MMM dd, yyyy HH:mm")
+                                <strong>Result:</strong>
+                                <span class="badge @(submission.PercentageScore >= submission.TestSession.PassingScore ? "bg-success" : "bg-danger")">
+                                    @(submission.PercentageScore >= submission.TestSession.PassingScore ? "PASSED" : "FAILED")
+                                </span>
                             </div>
                         </div>
+                    }
 
-                        @if (submission.TabSwitchCount > 0)
-                        {
-                            <div class="alert alert-warning">
-                                <strong>Tab Switches Detected:</strong> @submission.TabSwitchCount
-                                <br />
-                                <small>Note: Excessive tab switching may affect your credibility.</small>
-                            </div>
-                        }
-
-                        @if (!submission.IsDisqualified)
-                        {
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <strong>Passing Score:</strong> @submission.TestSession.PassingScore%
-                                </div>
-                                <div class="col-md-6">
-                                    <strong>Result:</strong>
-                                    <span class="badge @(submission.PercentageScore >= submission.TestSession.PassingScore ? "bg-success" : "bg-danger")">
-                                        @(submission.PercentageScore >= submission.TestSession.PassingScore ? "PASSED" : "FAILED")
-                                    </span>
-                                </div>
-                            </div>
-                        }
-
-                        <div class="text-center mt-4">
-                            <p class="text-muted">
-                                Thank you for taking the test. Your results have been recorded.
-                                <br />
-                                Please contact the university for further information about your application.
-                            </p>
-                        </div>
+                    <div class="text-center mt-4">
+                        <p class="text-muted">
+                            Thank you for completing the test. Your results have been recorded.
+                            <br />
+                            Please contact your university for further instructions.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -138,10 +149,11 @@ else
 @code {
     [Parameter] public Guid SubmissionId { get; set; }
 
-    private StudentSubmission? submission;
-protected override async Task OnInitializedAsync()
+    private StudentSubmissionDto? submission;
+
+    protected override async Task OnInitializedAsync()
     {
-        submission = await TestSessionService.GetSubmissionAsync(SubmissionId);
+        submission = await StudentSubmissionService.GetSubmissionDetailsByIdAsync(SubmissionId);
         if (submission == null)
         {
             Navigation.NavigateTo("/test/error");

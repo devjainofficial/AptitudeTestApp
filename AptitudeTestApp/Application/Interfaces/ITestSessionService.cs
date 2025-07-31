@@ -4,22 +4,16 @@ using AptitudeTestApp.Shared.Enums;
 
 namespace AptitudeTestApp.Application.Interfaces;
 
-public interface ITestSessionService
+public interface ITestSessionService : IEntityService<TestSessionDto, Guid>
 {
-    Task<TestSession> CreateTestSessionAsync(CreateTestSessionDto dto, Guid creatorId);
-    Task<TestSession?> GetTestSessionByTokenAsync(string token);
-    Task<List<TestSession>> GetTestSessionsByUniversityAsync(Guid universityId);
+    Task<TestSessionDto> CreateTestSessionAsync(CreateTestSessionDto dto, Guid creatorId);
+    Task<TestSessionDto?> GetTestSessionByTokenAsync(string token);
+    Task<List<TestSessionDto>> GetTestSessionsByUniversityAsync(Guid universityId);
+    Task<List<TestSessionDto>> GetAllTestSessionWithUniversityAsync(Guid creatorId);
+    Task<List<TestSession>> GetRecentTestSessionsAsync(int days, Guid creatorId);
+    Task<List<QuestionDto>> GetRandomizedQuestionsAsync(Guid submissionId);
+    Task<int> GetActiveTestCountAsync(Guid creatorId);
     Task<bool> IsTestSessionActiveAsync(string token);
-    Task<StudentSubmission> StartTestAsync(StudentTestStartDto dto);
-    Task<(List<QuestionDto>, StudentSubmission)> GetRandomizedQuestionsWithSubmissionAsync(Guid submissionId);
     Task SaveAnswerAsync(Guid submissionId, Guid questionId, Guid? selectedOptionId);
-    Task<StudentSubmission> SubmitTestAsync(Guid submissionId, string reason);
-    Task<StudentSubmission?> GetSubmissionAsync(Guid submissionId);
-    Task<int> GetActiveTestCountAsync();
-    Task<int> GetTotalSubmissionCountAsync();
-    Task<List<TestSession>> GetAllTestSessionAsync();
     Task ToggleActiveTestSessionAsync(Guid id);
-    Task DeleteTestSessionAsync(Guid id);
-    Task<List<TestSession>> GetRecentTestSessionsAsync(int days);
-    string GenerateUniqueToken();
 }

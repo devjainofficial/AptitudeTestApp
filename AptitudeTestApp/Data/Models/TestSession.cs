@@ -21,8 +21,8 @@ public class TestSession : BaseEntity<Guid>
 
     [Required, MaxLength(100)]
     public string Token { get; set; } = string.Empty;
-
     public bool IsActive { get; set; } = true;
+    public bool ShowResult { get; set; } = false;
     public string? CreatedBy { get; set; }
 
     // Navigation Properties

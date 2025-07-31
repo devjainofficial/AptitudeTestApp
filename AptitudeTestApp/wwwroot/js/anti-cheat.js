@@ -117,7 +117,7 @@
 
         // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
         const forbiddenKeys = [
-            'F12',
+            'F12', 'F11', 'ESC',
             { key: 'I', ctrl: true, shift: true },
             { key: 'J', ctrl: true, shift: true },
             { key: 'U', ctrl: true },
@@ -288,8 +288,8 @@
                 this.submissionId, reason);
 
             // Show final message
-            alert(`Test automatically submitted: ${reason}`);
-
+            //alert(`Test automatically submitted: ${reason}`);
+                
             // Redirect to completion page
             window.location.href = `/test/completed/${this.submissionId}`;
 

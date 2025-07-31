@@ -3,116 +3,277 @@
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Shared.Dialogs
 @using Microsoft.AspNetCore.Authorization
-@using Radzen
-@using Radzen.Blazor
 @using AptitudeTestApp.Shared.Enums
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthProvider
 
-@attribute [Authorize]
-
 @rendermode InteractiveServer
 
-<div class="mb-3 d-flex justify-content-between align-items-center">
-    <h3 class="mb-0 fw-bold">Add Question</h3>
+@attribute [Authorize]
 
-    <div>
-        <RadzenButton Text="Save"
-                      ButtonType="ButtonType.Submit"
-                      IsBusy="@isLoading"
-                      Disabled="@(!IsFormValid())"
-                      Class="me-2" />
+<PageTitle>Add Question</PageTitle>
 
-        <RadzenButton Text="Reset"
-                      Click="@Reset"
-                      ButtonStyle="ButtonStyle.Light" />
+<div class="px-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-dark mb-1">Add New Question</h2>
+            <small class="text-muted">Create a new question for your question bank</small>
+        </div>
+        <button class="btn btn-outline-dark rounded-pill px-4" @onclick='() => Nav.NavigateTo("/admin/question-bank")'>
+            <i class="bi bi-arrow-left me-2"></i>Back to Question Bank
+        </button>
     </div>
-</div>
 
-<RadzenTemplateForm Data="@question" Submit="@((QuestionDto args) => SaveQuestion(args))">
-    <RadzenFieldset Text="Question Details">
-        <div class="mb-3">
-            <RadzenLabel Text="Question Text" />
-            <RadzenTextBox @bind-Value="question.QuestionText" Name="QuestionText" Placeholder="Enter question" Style="width:100%" />
-            <RadzenRequiredValidator Component="QuestionText" Text="Question text is required" />
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Saving...</span>
+            </div>
+            <p class="mt-2 text-muted">Saving question...</p>
         </div>
+    }
+    else
+    {
+        <form @onsubmit="HandleValidSubmit" @onsubmit:preventDefault="true">
+            <!-- Question Details Card -->
+            <div class="card border-dark shadow-sm mb-4">
+                <div class="card-header bg-light border-dark">
+                    <h5 class="mb-0 text-dark">
+                        <i class="bi bi-question-circle me-2"></i>Question Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <!-- Question Text -->
+                        <div class="col-12">
+                            <label class="form-label fw-bold text-dark">
+                                Question Text <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control border-dark @(ShowValidation && string.IsNullOrWhiteSpace(question.QuestionText) ? "is-invalid" : "")" 
+                                      rows="3" 
+                                      @bind="question.QuestionText" 
+                                      placeholder="Enter your question here..."
+                                      maxlength="500"></textarea>
+                            @if (ShowValidation && string.IsNullOrWhiteSpace(question.QuestionText))
+                            {
+                                <div class="invalid-feedback">Question text is required</div>
+                            }
+                            <small class="text-muted">@(question.QuestionText?.Length ?? 0)/500 characters</small>
+                        </div>
 
-        <div class="mb-3">
-            <RadzenLabel Text="Category" />
-            <RadzenDropDown @bind-Value="question.CategoryId"
-                            Data="@categories"
-                            TextProperty="Name"
-                            ValueProperty="Id"
-                            Placeholder="Select Category"
-                            Style="width:100%" />
-        </div>
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">
+                                Category <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select border-dark @(ShowValidation && question.CategoryId == Guid.Empty ? "is-invalid" : "")" 
+                                    @bind="question.CategoryId">
+                                <option value="@Guid.Empty">-- Select Category --</option>
+                                @foreach (var category in categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                            @if (ShowValidation && question.CategoryId == Guid.Empty)
+                            {
+                                <div class="invalid-feedback">Please select a category</div>
+                            }
+                        </div>
 
-        <div class="mb-3">
-            <RadzenLabel Text="Difficulty Level" />
-            <RadzenDropDown @bind-Value="question.DifficultyLevel"
-                            Data="@difficultyLevels"
-                            Style="width:100%" />
-        </div>
+                        <!-- Difficulty Level -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Difficulty Level</label>
+                            <select class="form-select border-dark" @bind="question.DifficultyLevel">
+                                @foreach (var difficulty in difficultyLevels)
+                                {
+                                    <option value="@difficulty">@difficulty</option>
+                                }
+                            </select>
+                        </div>
 
-        <div class="mb-3">
-            <RadzenLabel Text="Points" />
-            <RadzenNumeric TValue="int" @bind-Value="question.Points" Min="1" Max="10" Style="width:100%" />
-        </div>
+                        <!-- Points and Active Status -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-dark">Points</label>
+                            <input type="number" 
+                                   class="form-control border-dark" 
+                                   @bind="question.Points" 
+                                   min="1" 
+                                   max="10" />
+                            <small class="text-muted">Points awarded for correct answer (1-10)</small>
+                        </div>
 
-        <div class="mb-3">
-            <RadzenCheckBox @bind-Value="question.IsActive" Name="IsActive" />
-            <RadzenLabel Text="Is Active" Component="IsActive" Style="margin-left: 8px;" />
-        </div>
-    </RadzenFieldset>
-
-    <RadzenFieldset Text="Options">
-        @if (question.Options?.Any() == true)
-        {
-            @for (int i = 0; i < question.Options.Count; i++)
-            {
-                var optionIndex = i; // Capture loop variable
-                var opt = question.Options[optionIndex];
-
-                <div class="row mb-2 align-items-center">
-                    <div class="col-8">
-                        <RadzenTextBox @bind-Value="opt.OptionText"
-                                       Style="width:100%"
-                                       Placeholder="Option text..." />
-                    </div>
-                    <div class="col-2">
-                        <RadzenCheckBox @bind-Value="opt.IsCorrect" Name="@($"IsCorrect_{optionIndex}")" />
-                        <RadzenLabel Text="Correct?" Component="@($"IsCorrect_{optionIndex}")" Style="margin-left: 8px;" />
-                    </div>
-                    <div class="col-2">
-                        <RadzenButton Icon="delete"
-                                      ButtonStyle="ButtonStyle.Danger"
-                                      Size="ButtonSize.Small"
-                                      Click="@(() => RemoveOption(optionIndex))"
-                                      Disabled="@(question.Options.Count <= 2)" />
+                        <div class="col-md-6 d-flex align-items-end justify-content-end">
+                            <div class="form-check">
+                                <input class="form-check-input border-dark"
+                                       style="margin-top: 7px;"
+                                       type="checkbox" 
+                                       id="isActive" 
+                                       @bind="question.IsActive">
+                                <label class="form-check-label fw-bold text-dark" for="isActive">
+                                    Question is Active
+                                </label>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Answer Options Card -->
+            <div class="card border-dark shadow-sm mb-4">
+                <div class="card-header bg-light border-dark">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-dark">
+                            <i class="bi bi-list-check me-2"></i>Answer Options
+                        </h5>
+                        <div class="d-flex gap-2">
+                            <span class="badge @(GetCorrectAnswersCount() > 0 ? "bg-white text-dark border border-dark" : "bg-danger text-white")">
+                                @GetCorrectAnswersCount() correct answer@(GetCorrectAnswersCount() != 1 ? "s" : "")
+                            </span>
+                            <span class="badge bg-dark text-white">
+                                @(question.Options?.Count ?? 0) options
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (question.Options?.Any() == true)
+                    {
+                        @for (int i = 0; i < question.Options.Count; i++)
+                        {
+                            var optionIndex = i;
+                            var opt = question.Options[optionIndex];
+                            
+                            <div class="row mb-3 align-items-center p-3 border @(opt.IsCorrect ? "border-success bg-success bg-opacity-10" : "border-secondary") rounded">
+                                <div class="col-1 text-center">
+                                    <div class="fw-bold text-dark fs-5">@((char)('A' + optionIndex))</div>
+                                </div>
+                                <div class="col-7">
+                                    <input type="text" 
+                                           class="form-control border-dark @(ShowValidation && string.IsNullOrWhiteSpace(opt.OptionText) ? "is-invalid" : "")"
+                                           @bind="opt.OptionText"
+                                           placeholder="Enter option text..."
+                                           maxlength="200" />
+                                    @if (ShowValidation && string.IsNullOrWhiteSpace(opt.OptionText))
+                                    {
+                                        <div class="invalid-feedback">Option text is required</div>
+                                    }
+                                </div>
+                                <div class="col-2">
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input border-dark" 
+                                               type="checkbox" 
+                                               id="correct-@optionIndex"
+                                               @bind="opt.IsCorrect" />
+                                        <label class="form-check-label ms-2 fw-bold" for="correct-@optionIndex">
+                                            Correct
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-2 text-end">
+                                    <button type="button" 
+                                            class="btn btn-sm @(question.Options.Count <= 2 ? "btn-outline-secondary" : "btn-outline-danger")" 
+                                            @onclick="() => RemoveOption(optionIndex)"
+                                            disabled="@(question.Options.Count <= 2)">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    <!-- Add Option Button -->
+                    <div class="text-center mt-3">
+                        <button type="button" 
+                                class="btn btn-outline-dark rounded-pill px-4" 
+                                @onclick="AddOption"
+                                disabled="@(question.Options?.Count >= 6)">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Add Option (@(question.Options?.Count ?? 0)/6)
+                        </button>
+                    </div>
+
+                    @if (ShowValidation)
+                    {
+                        @if (question.Options?.Count < 2)
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                At least 2 options are required
+                            </div>
+                        }
+                        else if (!question.Options.Any(o => o.IsCorrect))
+                        {
+                            <div class="alert alert-danger mt-3">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                At least one correct answer must be selected
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+
+            <!-- Form Validation Summary -->
+            @if (ShowValidation && !IsFormValid())
+            {
+                <div class="alert alert-danger mb-4">
+                    <h6 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Please fix the following issues:
+                    </h6>
+                    <ul class="mb-0">
+                        @if (string.IsNullOrWhiteSpace(question.QuestionText))
+                        {
+                            <li>Question text is required</li>
+                        }
+                        @if (question.CategoryId == Guid.Empty)
+                        {
+                            <li>Category selection is required</li>
+                        }
+                        @if (question.Options?.Count < 2)
+                        {
+                            <li>At least 2 answer options are required</li>
+                        }
+                        @if (question.Options?.Any(o => string.IsNullOrWhiteSpace(o.OptionText)) == true)
+                        {
+                            <li>All option texts must be filled</li>
+                        }
+                        @if (question.Options?.Any(o => o.IsCorrect) != true)
+                        {
+                            <li>At least one correct answer must be selected</li>
+                        }
+                    </ul>
+                </div>
             }
-        }
 
-        <RadzenButton Text="Add Option"
-                      Icon="add"
-                      Click="@AddOption"
-                      ButtonStyle="ButtonStyle.Light"
-                      Disabled="@(question.Options?.Count >= 6)" />
-    </RadzenFieldset>
-
-</RadzenTemplateForm>
+            <!-- Action Buttons -->
+            <div class="d-flex gap-3 justify-content-end mb-4">
+                <button type="button" 
+                        class="btn btn-outline-dark rounded-pill px-4" 
+                        @onclick="Reset">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Reset Form
+                </button>
+                <button type="submit" 
+                        class="btn btn-dark rounded-pill px-4 shadow-sm"
+                        disabled="@(isLoading)">
+                    <i class="bi bi-check-circle me-2"></i>
+                    @(isLoading ? "Saving..." : "Save Question")
+                </button>
+            </div>
+        </form>
+    }
+</div>
 
 @code {
-    [Parameter] public EventCallback OnQuestionAdded { get; set; }
     [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
 
     private QuestionDto question = new();
     private List<QuestionCategoryDto> categories = new();
     private QuestionDifficulty[] difficultyLevels = Enum.GetValues<QuestionDifficulty>();
     private bool isLoading = false;
+    private bool ShowValidation = false;
 
     [Inject] IQuestionService QuestionService { get; set; } = default!;
     [Inject] IToastService ToastService { get; set; } = default!;
@@ -167,8 +328,10 @@
                 new QuestionOptionDto()
             },
             IsActive = true,
-            Points = 1
+            Points = 1,
+            DifficultyLevel = QuestionDifficulty.Easy
         };
+        ShowValidation = false;
     }
 
     private void AddOption()
@@ -176,7 +339,7 @@
         if (question.Options == null)
             question.Options = new List<QuestionOptionDto>();
 
-        if (question.Options.Count < 6) // Limit maximum options
+        if (question.Options.Count < 6)
         {
             question.Options.Add(new QuestionOptionDto());
             StateHasChanged();
@@ -192,34 +355,36 @@
         }
     }
 
-    private async Task SaveQuestion(QuestionDto model)
+    private async Task HandleValidSubmit()
     {
+        ShowValidation = true;
+        
         if (!IsFormValid())
         {
-            ToastService.Error(string.Empty, "Please fill all required fields and ensure at least one correct answer is selected.", 5000);
+            StateHasChanged();
             return;
         }
 
+        await SaveQuestion();
+    }
+
+    private async Task SaveQuestion()
+    {
         isLoading = true;
         StateHasChanged();
 
         try
         {
             var userId = await GetCurrentUserId();
+            question.CreatorId = userId;
 
             await QuestionService.CreateAsync(question, userId);
 
-            // Uncomment and modify based on your service return type
-            // if (result.IsSuccess)
-            // {
             ToastService.Success("Question added successfully", "", 5000);
-            await OnQuestionAdded.InvokeAsync();
             Reset();
-            // }
-            // else
-            // {
-            //     ToastService.Error("Failed to save question", result.ErrorMessage ?? "Unknown error");
-            // }
+            
+            // Optionally navigate back to question bank
+            // Nav.NavigateTo("/admin/question-bank");
         }
         catch (Exception ex)
         {
@@ -252,6 +417,11 @@
                question.Options.Count >= 2 &&
                question.Options.All(o => !string.IsNullOrWhiteSpace(o.OptionText)) &&
                question.Options.Any(o => o.IsCorrect);
+    }
+
+    private int GetCorrectAnswersCount()
+    {
+        return question.Options?.Count(o => o.IsCorrect) ?? 0;
     }
 
     private void Reset()

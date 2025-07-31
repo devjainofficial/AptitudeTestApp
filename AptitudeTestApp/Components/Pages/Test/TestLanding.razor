@@ -1,10 +1,12 @@
 ﻿@page "/test/{UniversityId:guid}/{Token}"
-@using System.ComponentModel.DataAnnotations
 @using AptitudeTestApp.Application.DTOs
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Data.Models
 @inject ITestSessionService TestSessionService
+@inject IStudentSubmissionService StudentSubmissionService
 @inject NavigationManager Navigation
+@inject ILogger<TestLanding> Logger
+@inject IJSRuntime JS
 @using Radzen
 @using Radzen.Blazor
 @rendermode InteractiveServer
@@ -14,7 +16,7 @@
 @if (!isActive)
 {
     <div class="m-4">
-        <RadzenCard Style="max-width: 500px; margin: auto; margin-top: 100px;">
+        <RadzenCard Style="max-width: 500px; margin: auto; margin-top: 12rem; box-shadow: 2px 2px 0 black;">
             <h3 class="text-danger text-center">This test session is inactive or invalid.</h3>
         </RadzenCard>
     </div>
@@ -22,32 +24,55 @@
 else
 {
     <div class="m-4">
-        <RadzenCard Style="max-width: 500px; margin: auto; margin-top: 60px; box-shadow: 0 0 15px rgba(0,0,0,0.1)">
-            <EditForm Model="@studentInfo" OnValidSubmit="@StartTest" FormName="StudentStartForm">
+        <RadzenCard Style="max-width: 500px; margin: auto; margin-top: 8rem; padding: 2rem; border: 1px solid black; box-shadow: 3px 3px 0 black;">
+
+            <!-- Title -->
+            <div class="text-center mb-4">
+                <h3 class="fw-bold text-uppercase text-dark" style="letter-spacing: 1px;">
+                    Enter Your Details to Begin
+                </h3>
+                <p class="text-muted mb-0" style="font-size: 0.9rem;">
+                    Please fill in your full name and email to start the test.
+                </p>
+            </div>
+
+            <EditForm Model="@studentInfo" OnValidSubmit="@StartTest">
                 <DataAnnotationsValidator />
 
+                <!-- Full Name -->
                 <div class="mb-3">
                     <RadzenLabel Text="Full Name" Component="StudentName" />
-                    <RadzenTextBox Name="StudentName" @bind-Value="studentInfo.StudentName" Style="width: 100%;" />
+                    <RadzenTextBox Name="StudentName" @bind-Value="studentInfo.StudentName"
+                                   Style="width: 100%; border: 1px solid black; background-color: white;" />
                     <ValidationMessage For="@(() => studentInfo.StudentName)" />
                 </div>
 
+                <!-- Email -->
                 <div class="mb-3">
                     <RadzenLabel Text="Email" Component="StudentEmail" />
-                    <RadzenTextBox Name="StudentEmail" @bind-Value="studentInfo.StudentEmail" Style="width: 100%;" />
+                    <RadzenTextBox Name="StudentEmail" @bind-Value="studentInfo.StudentEmail"
+                                   Style="width: 100%; border: 1px solid black; background-color: white;" />
                     <ValidationMessage For="@(() => studentInfo.StudentEmail)" />
                 </div>
 
+                <!-- Submit Button -->
                 <RadzenButton Text="Start Test"
-                              ButtonStyle="ButtonStyle.Primary"
-                              Icon="play_circle"
+                              ButtonStyle="ButtonStyle.Dark"
+                              ButtonType="ButtonType.Submit"
                               Type="Submit"
-                              Style="margin-top: 20px; width: 100%"
+                              Style="margin-top: 20px; width: 100%; border: 1px solid black;"
                               Disabled="@isSubmitting" />
 
+                <!-- Progress -->
                 @if (isSubmitting)
                 {
                     <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" Style="margin-top: 15px;" />
+                }
+
+                <!-- Error -->
+                @if (!string.IsNullOrWhiteSpace(errorMessage))
+                {
+                    <p class="text-danger mt-3 text-center">@errorMessage</p>
                 }
             </EditForm>
         </RadzenCard>
@@ -57,35 +82,87 @@ else
 @code {
     [Parameter] public string Token { get; set; } = string.Empty;
     [Parameter] public Guid UniversityId { get; set; } = Guid.Empty;
-    [Parameter] public Guid TestCreatorId { get; set; } = Guid.Empty;
 
     private StudentTestStartDto studentInfo = new();
-    private TestSession? testSession;
+    private TestSessionDto? testSession;
     private bool isActive;
     private bool isSubmitting = false;
+    private string errorMessage = string.Empty;
+    private bool jsInteropLoaded = false;
 
     protected override async Task OnInitializedAsync()
     {
-        testSession = await TestSessionService.GetTestSessionByTokenAsync(Token);
-        isActive = testSession != null && testSession.IsActive;
-
-        if (isActive)
+        try
         {
-            studentInfo.Token = Token;
+            testSession = await TestSessionService.GetTestSessionByTokenAsync(Token);
+
+            if (testSession is not null && testSession.UniversityId == UniversityId && testSession.IsActive)
+            {
+                isActive = true;
+                studentInfo.Token = Token;
+            }
+            else
+            {
+                isActive = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load test session");
+            isActive = false;
         }
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                studentInfo.BrowserInfo = await JS.InvokeAsync<string>("getUserAgent");
+                studentInfo.IpAddress = await JS.InvokeAsync<string>("getIpAddress");
+
+                jsInteropLoaded = true;
+                StateHasChanged(); 
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to fetch browser info or IP.");
+            }
+        }
+    }
+
+
     private async Task StartTest()
     {
-        isSubmitting = true;
-
-        StudentSubmission studentSubmission = await TestSessionService.StartTestAsync(studentInfo);
-
-        if (studentSubmission is not null)
+        if (!jsInteropLoaded)
         {
-            Navigation.NavigateTo($"/test/{studentSubmission.Id}/start");
+            errorMessage = "Please wait while we gather browser info...";
+            return;
+        }
+
+        isSubmitting = true;
+        errorMessage = string.Empty;
+
+        try
+        {
+            var submission = await StudentSubmissionService.StartTestAsync(studentInfo);
+            if (submission is not null)
+            {
+                Navigation.NavigateTo($"/test/{submission.Id}/start");
+            }
+            else
+            {
+                errorMessage = "Unable to start the test.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error while starting test");
+            errorMessage = "Unexpected error. Please contact support.";
         }
 
         isSubmitting = false;
     }
+
 }

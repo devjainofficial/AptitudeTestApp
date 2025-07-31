@@ -1,0 +1,461 @@
+﻿@page "/admin/student-results/{submissionId:guid}"
+@inject IStudentSubmissionService SubmissionService
+@inject NavigationManager Navigation
+
+@using AptitudeTestApp.Application.DTOs
+@using AptitudeTestApp.Application.Interfaces
+@using AptitudeTestApp.Data.Models
+@using AptitudeTestApp.Shared.Enums
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Student Result Details</PageTitle>
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <button class="btn btn-link p-0 text-decoration-none" @onclick="GoBack">
+                            <i class="bi bi-arrow-left me-1"></i>Student Results
+                        </button>
+                    </li>
+                    <li class="breadcrumb-item active text-dark">Submission Details</li>
+                </ol>
+            </nav>
+            <h2 class="text-dark mb-1">Student Submission Details</h2>
+            @if (submission != null)
+            {
+                <p class="text-muted mb-0">
+                    <span>@submission.StudentName (@submission.StudentEmail)</span>
+                </p>
+            }
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <!-- Loading State -->
+        <div class="text-center py-5">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-dark">Loading submission details...</p>
+        </div>
+    }
+    else if (submission == null)
+    {
+        <!-- Not Found State -->
+        <div class="text-center py-5">
+            <i class="bi bi-exclamation-triangle display-1 text-muted"></i>
+            <h4 class="text-dark mt-3">Submission Not Found</h4>
+            <p class="text-muted">The requested submission could not be found or you don't have permission to view it.</p>
+            <button class="btn btn-dark mt-3" @onclick="GoBack">
+                <i class="bi bi-arrow-left me-2"></i>Back to Results
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <!-- Student Information Card -->
+            <div class="col-lg-6">
+                <div class="card border-dark">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-person-circle me-2"></i>Student Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark">Full Name</label>
+                                <p class="mb-0">@submission.StudentName</p>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark">Email Address</label>
+                                <p class="mb-0">@submission.StudentEmail</p>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-dark">IP Address</label>
+                                <p class="mb-0">@(submission.IpAddress ?? "N/A")</p>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-dark">Tab Switches</label>
+                                <p class="mb-0">
+                                    <span class="badge @(submission.TabSwitchCount > 5 ? "bg-danger" : submission.TabSwitchCount > 2 ? "bg-warning text-dark" : "bg-success")">
+                                        @submission.TabSwitchCount
+                                    </span>
+                                </p>
+                            </div>
+                            @if (!string.IsNullOrEmpty(submission.BrowserInfo))
+                            {
+                                <div class="col-12">
+                                    <label class="form-label fw-bold text-dark">Browser Information</label>
+                                    <p class="mb-0 small text-muted">@submission.BrowserInfo</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Information Card -->
+            <div class="col-lg-6">
+                <div class="card border-dark">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i>Test Information
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark">University</label>
+                                <p class="mb-0">@submission.TestSession.University.Name</p>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold text-dark">Test Name</label>
+                                <p class="mb-0">@submission.TestSession.TestName</p>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-dark">Start Time</label>
+                                <p class="mb-0">@submission.StartTime.ToString("MMM dd, yyyy HH:mm")</p>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-dark">End Time</label>
+                                <p class="mb-0">@(submission.EndTime?.ToString("MMM dd, yyyy HH:mm") ?? "In Progress")</p>
+                            </div>
+                            @if (submission.TimeTaken.HasValue)
+                            {
+                                <div class="col-6">
+                                    <label class="form-label fw-bold text-dark">Duration</label>
+                                    <p class="mb-0">@GetFormattedDuration(submission.TimeTaken.Value)</p>
+                                </div>
+                            }
+                            <div class="col-6">
+                                <label class="form-label fw-bold text-dark">Status</label>
+                                <p class="mb-0">
+                                    <span class="badge @GetStatusBadgeClass(submission.Status)">
+                                        @submission.Status
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Score Summary Card -->
+            <div class="col-12">
+                <div class="card border-dark">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-trophy me-2"></i>Score Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4 align-items-center">
+                            <div class="col-md-3 text-center">
+                                <div class="display-4 text-dark fw-bold">@submission.TotalScore</div>
+                                <small class="text-muted">out of @submission.MaxPossibleScore</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="display-4 @GetScoreTextClass(submission.PercentageScore) fw-bold">
+                                    @submission.PercentageScore.ToString("F1")%
+                                </div>
+                                <small class="text-muted">Percentage Score</small>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <div class="h4 mb-2">
+                                    <span class="badge @GetQualificationBadgeClass(submission) fs-6 px-3 py-2">
+                                        @(IsQualified(submission) ? "QUALIFIED" : "UNQUALIFIED")
+                                    </span>
+                                </div>
+                                <small class="text-muted">
+                                    Passing: @submission.TestSession.PassingScore%
+                                </small>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar @GetProgressBarClass(submission.PercentageScore)"
+                                         role="progressbar"
+                                         style="width: @submission.PercentageScore%"
+                                         aria-valuenow="@submission.PercentageScore"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        @submission.PercentageScore.ToString("F1")%
+                                    </div>
+                                </div>
+                                <small class="text-muted mt-2 d-block">Performance Bar</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disqualification Information (if applicable) -->
+            @if (submission.IsDisqualified)
+            {
+                <div class="col-12">
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">
+                                <i class="bi bi-exclamation-triangle me-2"></i>Disqualification Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-danger mb-0">
+                                <strong>Reason:</strong> @(submission.DisqualificationReason ?? "No specific reason provided")
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- Student Answers Section -->
+            @if (submission.StudentAnswers?.Any() == true)
+            {
+                <div class="col-12">
+                    <div class="card border-dark">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-list-check me-2"></i>Answer Details (@submission.StudentAnswers.Count questions)
+                            </h5>
+                            <button class="btn btn-outline-light btn-sm" @onclick="ToggleAnswersVisibility">
+                                @if (showAnswers)
+                                {
+                                    <i class="bi bi-eye-slash me-1"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-eye me-1"></i>
+                                }
+                            </button>
+                        </div>
+                        @if (showAnswers)
+                        {
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    @foreach (var answer in submission.StudentAnswers.OrderBy(a => a.QuestionId))
+                                    {
+                                        <div class="col-12">
+                                            <div class="card @(answer.IsCorrect ? "border-success" : "border-danger") border-2">
+                                                <div class="card-body">
+                                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                                        <h6 class="card-title mb-0">Question @answer.Question.QuestionText</h6>
+                                                        <span class="badge @(answer.IsCorrect ? "bg-success" : "bg-danger")">
+                                                            @(answer.IsCorrect ? "Correct" : "Incorrect")
+                                                        </span>
+                                                    </div>
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <small class="text-muted">Student Answer:</small>
+                                                            <p class="mb-0">@(answer.SelectedOption?.OptionText ?? "No answer selected")</p>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <small class="text-muted">Points Awarded:</small>
+                                                            <p class="mb-0">@answer.PointsEarned</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Anti-Cheat Logs Section -->
+            @if (submission.AntiCheatLogs?.Any() == true)
+            {
+                <div class="col-12">
+                    <div class="card border-dark">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-shield-exclamation me-2"></i>Anti-Cheat Logs (@submission.AntiCheatLogs.Count events)
+                            </h5>
+                            <button class="btn btn-outline-light btn-sm" @onclick="ToggleLogsVisibility">
+                                @if (showLogs)
+                                {
+                                    <i class="bi bi-eye-slash me-1"></i>
+                                }                        
+                                else
+                                {
+                                    <i class="bi bi-eye me-1"></i>
+                                }
+                            </button>
+                        </div>
+                        @if (showLogs)
+                        {
+                            <div class="card-body">
+                                <div class="timeline">
+                                    @foreach (var log in submission.AntiCheatLogs.OrderBy(l => l.Timestamp))
+                                    {
+                                        <div class="timeline-item border-start border-3 @GetLogBorderClass(log.EventType) ps-3 pb-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <h6 class="mb-1">@log.EventType</h6>
+                                                    <small class="text-muted">@log.Timestamp.ToString("MMM dd, HH:mm:ss")</small>
+                                                </div>
+                                                <span class="badge @GetLogBadgeClass(log.EventType)">
+                                                    @log.EventType
+                                                </span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid SubmissionId { get; set; }
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
+
+    private StudentSubmissionDto? submission;
+    private bool isLoading = true;
+    private bool showAnswers = false;
+    private bool showLogs = false;
+    private Guid creatorGuid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthenticationState is null) return;
+
+        var authState = await AuthenticationState;
+        string creatorId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Admin";
+        creatorGuid = Guid.TryParse(creatorId, out var parsed) ? parsed : Guid.Empty;
+
+        await LoadSubmissionDetails();
+    }
+
+    private async Task LoadSubmissionDetails()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            submission = await SubmissionService.GetSubmissionDetailsByIdAsync(SubmissionId);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading submission details: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin/student-results");
+    }
+
+    private void ToggleAnswersVisibility()
+    {
+        showAnswers = !showAnswers;
+    }
+
+    private void ToggleLogsVisibility()
+    {
+        showLogs = !showLogs;
+    }
+
+    private bool IsQualified(StudentSubmissionDto submission)
+    {
+        return submission.PercentageScore >= submission.TestSession.PassingScore;
+    }
+
+    private string GetQualificationBadgeClass(StudentSubmissionDto submission)
+    {
+        return IsQualified(submission) ? "bg-success text-white" : "bg-danger text-white";
+    }
+
+    private string GetStatusBadgeClass(TestStatus status)
+    {
+        return status switch
+        {
+            TestStatus.Completed => "bg-success text-white",
+            TestStatus.InProgress => "bg-warning text-dark",
+            TestStatus.Disqualified => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+
+    private string GetScoreTextClass(decimal percentage)
+    {
+        return percentage switch
+        {
+            >= 90 => "text-success",
+            >= 70 => "text-info",
+            >= 50 => "text-warning",
+            _ => "text-danger"
+        };
+    }
+
+    private string GetProgressBarClass(decimal percentage)
+    {
+        return percentage switch
+        {
+            >= 90 => "bg-success",
+            >= 70 => "bg-info",
+            >= 50 => "bg-warning",
+            _ => "bg-danger"
+        };
+    }
+
+    private string GetLogBorderClass(string eventType)
+    {
+        return eventType.ToLower() switch
+        {
+            "tab_switch" => "border-warning",
+            "window_blur" => "border-info",
+            "suspicious_activity" => "border-danger",
+            "disqualification" => "border-danger",
+            _ => "border-secondary"
+        };
+    }
+
+    private string GetLogBadgeClass(string eventType)
+    {
+        return eventType.ToLower() switch
+        {
+            "tab_switch" => "bg-warning text-dark",
+            "window_blur" => "bg-info text-white",
+            "suspicious_activity" => "bg-danger text-white",
+            "disqualification" => "bg-danger text-white",
+            _ => "bg-secondary text-white"
+        };
+    }
+
+    private string GetFormattedDuration(int seconds)
+    {
+        var timeSpan = TimeSpan.FromSeconds(seconds);
+        if (timeSpan.TotalHours >= 1)
+        {
+            return $"{(int)timeSpan.TotalHours}h {timeSpan.Minutes}m {timeSpan.Seconds}s";
+        }
+        else if (timeSpan.TotalMinutes >= 1)
+        {
+            return $"{(int)timeSpan.TotalMinutes}m {timeSpan.Seconds}s";
+        }
+        return $"{timeSpan.Seconds}s";
+    }
+}

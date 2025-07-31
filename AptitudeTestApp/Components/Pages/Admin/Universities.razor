@@ -8,97 +8,328 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 
-
-@if (universities == null)
-{
-    <p><em>Loading...</em></p>
-}
-else
-{
-    <div class="px-4">
-        <div class="mb-3 d-flex justify-content-between">
-            <h2>University Management</h2>
-
-            <button class="btn btn-dark rounded-pill" @onclick="ShowAddModal">Add University</button>
+<div class="px-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-dark mb-1">University Management</h2>
+            <small class="text-muted">
+                @if (totalCount > 0)
+                {
+                    <span>Showing @((currentPage - 1) * pageSize + 1) - @(Math.Min(currentPage * pageSize, totalCount)) of @totalCount universities</span>
+                }
+                else
+                {
+                    <span>No universities found</span>
+                }
+            </small>
         </div>
-        <div class="mb-3 d-flex justify-content-between">
-            <div>
-                <button class="btn btn-outline-secondary me-2" @onclick="PreviousPage" disabled="@(!CanGoPrevious)">Previous</button>
-                <button class="btn btn-outline-secondary" @onclick="NextPage" disabled="@(!CanGoNext)">Next</button>
+        <button class="btn btn-dark rounded-pill px-4 shadow-sm" @onclick="ShowAddModal">
+            <i class="bi bi-plus-circle me-2"></i>Add University
+        </button>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card border-dark mb-4">
+        <div class="card-body bg-light">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold text-dark mb-0">Search Universities</label>
+                        @* <span class="badge bg-dark text-white">
+                            @totalCount found
+                        </span> *@
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-dark">
+                            <i class="bi bi-search text-dark"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control border-dark" 
+                               placeholder="Search by name or code..." 
+                               @bind="searchTerm" 
+                               @bind:event="oninput" />
+                        @if (!string.IsNullOrEmpty(searchTerm))
+                        {
+                            <button class="btn btn-outline-dark" type="button" @onclick="ClearSearch">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-dark">Status Filter</label>
+                    <select class="form-select border-dark" @bind="selectedStatus">
+                        <option value="">All Status</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+
+                <div class="col-md-5 d-flex align-items-end gap-2">
+                    <button class="btn btn-dark" @onclick="ApplyFilters">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <button class="btn btn-outline-dark" @onclick="ResetFilters">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Reset
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Show @pageSize
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(5)">5 per page</button></li>
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(10)">10 per page</button></li>
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(25)">25 per page</button></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <table class="table table-bordered table-striped">
-            <thead class="table-dark">
-                <tr>
-                    <th>Name</th>
-                    <th>Code</th>
-                    <th>Contact Email</th>
-                    <th>Status</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var uni in universities)
-                {
-                    <tr>
-                        <td>@uni.Name</td>
-                        <td>@uni.Code</td>
-                        <td>@uni.ContactEmail</td>
-                        <td>
-                            @if (uni.IsActive)
-                            {
-                                <span class="badge bg-dark">Active</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-danger">Inactive</span>
-                            }
-                        </td>
-                        <td>@uni.CreatedAt.ToShortDateString()</td>
-                        <td>
-                            <button class="btn btn-sm btn-dark me-2" @onclick="() => ShowEditModal(uni)">Edit</button>
-                            <button class="@(uni.IsActive ? "btn btn-sm btn-danger me-2" : "btn btn-sm btn-dark me-2")"
-                                    @onclick="() => ToggleActivateUniversity(uni.Id)">
-                                @(uni.IsActive ? "Deactivate" : "Activate")
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteUniversity(uni.Id)">Delete</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
     </div>
-}
+
+    <!-- Loading State -->
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading universities...</p>
+        </div>
+    }
+    else if (universities?.Any() == true)
+    {
+        <!-- Universities Grid -->
+        <div class="row">
+            @foreach (var uni in universities)
+            {
+                <div class="col-12 mb-3">
+                    <div class="card border-dark shadow-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <!-- University Info -->
+                                <div class="col-md-6">
+                                    <h5 class="card-title mb-2 text-dark">
+                                        @HighlightSearchTerm(uni.Name, searchTerm)
+                                    </h5>
+                                    <div class="d-flex gap-2 mb-2">
+                                        <span class="badge bg-dark text-white">@uni.Code</span>
+                                        <span class="badge @(uni.IsActive ? "bg-white text-dark border border-dark" : "bg-danger text-white")">
+                                            @(uni.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </div>
+                                    <div class="text-muted">
+                                        <i class="bi bi-envelope me-1"></i>@uni.ContactEmail
+                                    </div>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar me-1"></i>Created: @uni.CreatedAt.ToShortDateString()
+                                    </small>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button class="btn btn-sm btn-outline-dark" 
+                                                @onclick="() => ShowEditModal(uni)">
+                                            <i class="bi bi-pencil me-1"></i>Edit
+                                        </button>
+                                        <button class="btn btn-sm @(uni.IsActive ? "btn-outline-secondary" : "btn-dark")" 
+                                                @onclick="() => ToggleActivateUniversity(uni.Id)">
+                                            <i class="bi bi-@(uni.IsActive ? "eye-slash" : "eye") me-1"></i>
+                                            @(uni.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                @onclick="() => ShowDeleteConfirmation(uni)">
+                                            <i class="bi bi-trash me-1"></i>Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-muted">
+                Page @currentPage of @TotalPages (@totalCount total universities)
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="() => GoToPage(1)" disabled="@(currentPage == 1)">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="PreviousPage" disabled="@(!CanGoPrevious)">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                    </li>
+
+                    @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(TotalPages, currentPage + 2); i++)
+                    {
+                        int pageNumber = i;
+                        <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                            <button class="page-link @(pageNumber == currentPage ? "bg-dark border-dark text-white" : "border-dark text-dark bg-white")" 
+                                    @onclick="() => GoToPage(pageNumber)">
+                                @pageNumber
+                            </button>
+                        </li>
+                    }
+
+                    <li class="page-item @(currentPage == TotalPages ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="NextPage" disabled="@(!CanGoNext)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(currentPage == TotalPages ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="() => GoToPage(TotalPages)" disabled="@(currentPage == TotalPages)">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+    else
+    {
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <i class="bi bi-building fs-1 text-muted mb-3"></i>
+            <h4 class="text-muted">No Universities Found</h4>
+            <p class="text-muted mb-4">
+                @if (!string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(selectedStatus))
+                {
+                    <span>No universities match your current filters.</span>
+                }
+                else
+                {
+                    <span>Get started by adding your first university.</span>
+                }
+            </p>
+            @if (!string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(selectedStatus))
+            {
+                <button class="btn btn-outline-dark me-2" @onclick="ResetFilters">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Clear Filters
+                </button>
+            }
+            <button class="btn btn-dark" @onclick="ShowAddModal">
+                <i class="bi bi-plus-circle me-1"></i>Add First University
+            </button>
+        </div>
+    }
+</div>
 
 <!-- Add/Edit Modal -->
 @if (showModal)
 {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">@((selectedUniversity.Id == Guid.Empty) ? "Add University" : "Edit University")</h5>
+            <div class="modal-content border-dark">
+                <div class="modal-header bg-light border-dark">
+                    <h5 class="modal-title text-dark">
+                        <i class="bi bi-@(selectedUniversity.Id == Guid.Empty ? "plus-circle" : "pencil") me-2"></i>
+                        @((selectedUniversity.Id == Guid.Empty) ? "Add University" : "Edit University")
+                    </h5>
                     <button type="button" class="btn-close" @onclick="CloseModal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label">Name</label>
-                        <input class="form-control" @bind="selectedUniversity.Name" />
+                        <label class="form-label fw-bold text-dark">
+                            University Name <span class="text-danger">*</span>
+                        </label>
+                        <input class="form-control border-dark @(ShowValidation && string.IsNullOrWhiteSpace(selectedUniversity.Name) ? "is-invalid" : "")" 
+                               @bind="selectedUniversity.Name" 
+                               placeholder="Enter university name..." />
+                        @if (ShowValidation && string.IsNullOrWhiteSpace(selectedUniversity.Name))
+                        {
+                            <div class="invalid-feedback">University name is required</div>
+                        }
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Code</label>
-                        <input class="form-control" @bind="selectedUniversity.Code" />
+                        <label class="form-label fw-bold text-dark">
+                            University Code <span class="text-danger">*</span>
+                        </label>
+                        <input class="form-control border-dark @(ShowValidation && string.IsNullOrWhiteSpace(selectedUniversity.Code) ? "is-invalid" : "")" 
+                               @bind="selectedUniversity.Code" 
+                               placeholder="Enter university code (e.g., MIT, UCLA)..." />
+                        @if (ShowValidation && string.IsNullOrWhiteSpace(selectedUniversity.Code))
+                        {
+                            <div class="invalid-feedback">University code is required</div>
+                        }
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Contact Email</label>
-                        <input class="form-control" @bind="selectedUniversity.ContactEmail" />
+                        <label class="form-label fw-bold text-dark">
+                            Contact Email <span class="text-danger">*</span>
+                        </label>
+                        <input type="email" 
+                               class="form-control border-dark @(ShowValidation && !IsValidEmail(selectedUniversity.ContactEmail ?? string.Empty) ? "is-invalid" : "")" 
+                               @bind="selectedUniversity.ContactEmail" 
+                               placeholder="Enter contact email..." />
+                        @if (ShowValidation && !IsValidEmail(selectedUniversity.ContactEmail))
+                        {
+                            <div class="invalid-feedback">Valid email address is required</div>
+                        }
                     </div>
+
+                    @if (ShowValidation && !IsFormValid())
+                    {
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Please fill in all required fields correctly.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer bg-light border-dark">
+                    <button class="btn btn-outline-dark" @onclick="CloseModal">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    <button class="btn btn-dark" @onclick="SaveUniversity" disabled="@isSaving">
+                        <i class="bi bi-@(isSaving ? "hourglass-split" : "check-circle") me-1"></i>
+                        @(isSaving ? "Saving..." : "Save University")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (showDeleteModal)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Confirm Delete
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseDeleteModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">Are you sure you want to delete this university?</p>
+                    <div class="alert alert-light border">
+                        <strong>@universityToDelete?.Name</strong><br>
+                        <small class="text-muted">Code: @universityToDelete?.Code</small>
+                    </div>
+                    <p class="text-danger mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>This action cannot be undone.</strong>
+                    </p>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
-                    <button class="btn btn-primary" @onclick="SaveUniversity">Save</button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseDeleteModal">
+                        Cancel
+                    </button>
+                    <button class="btn btn-danger" @onclick="ConfirmDelete" disabled="@isDeleting">
+                        <i class="bi bi-@(isDeleting ? "hourglass-split" : "trash") me-1"></i>
+                        @(isDeleting ? "Deleting..." : "Delete University")
+                    </button>
                 </div>
             </div>
         </div>
@@ -108,25 +339,36 @@ else
 @code {
     [CascadingParameter]
     private Task<AuthenticationState>? AuthenticationState { get; set; }
+    
     private List<UniversityDto> universities = new();
     private UniversityDto selectedUniversity = new();
+    private UniversityDto? universityToDelete;
     private bool showModal = false;
+    private bool showDeleteModal = false;
+    private bool ShowValidation = false;
+    private bool isLoading = true;
+    private bool isSaving = false;
+    private bool isDeleting = false;
+    
     Guid userId;
 
     // Pagination
     private int currentPage = 1;
-    private const int pageSize = 10;
+    private int pageSize = 10;
     private int totalCount = 0;
     private int TotalPages => (int)Math.Ceiling((double)totalCount / pageSize);
     private bool CanGoPrevious => currentPage > 1;
     private bool CanGoNext => currentPage < TotalPages;
+
+    // Filtering
+    private string searchTerm = string.Empty;
+    private string selectedStatus = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
         if (AuthenticationState is not null)
         {
             var authState = await AuthenticationState;
-
             string? userIdString = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             if (Guid.TryParse(userIdString, out var parsedUserId))
@@ -140,69 +382,65 @@ else
 
     private async Task LoadUniversities()
     {
-        totalCount = await universityService.GetTotalCountAsync(userId);
-        universities = await universityService.GetAllAsync(userId, (currentPage - 1) * pageSize, pageSize);
-    }
+        isLoading = true;
+        StateHasChanged();
 
-    private void ShowAddModal()
-    {
-        selectedUniversity = new();
-        showModal = true;
-    }
-
-    private void ShowEditModal(UniversityDto uni)
-    {
-        selectedUniversity = new UniversityDto
+        try
         {
-            Id = uni.Id,
-            Name = uni.Name,
-            Code = uni.Code,
-            ContactEmail = uni.ContactEmail
-        };
+             bool? isActive = null;
 
-        showModal = true;     
-    }
-
-    private void CloseModal()
-    {
-        showModal = false;
-        selectedUniversity = new();
-    }
-
-    private async Task SaveUniversity()
-    {
-        if (AuthenticationState is not null)
-        {
-            try
+            if (!string.IsNullOrWhiteSpace(selectedStatus) && 
+                bool.TryParse(selectedStatus, out var parsedStatus))
             {
-                var authState = await AuthenticationState;
-
-                userId = GetUserIdFromAuthState(authState);
-
-                if (selectedUniversity.Id == Guid.Empty)
-                    await CreateNewUniversity(selectedUniversity, userId);
-                else
-                    await UpdateExistingUniversity(selectedUniversity, userId);
+                isActive = parsedStatus;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing university: {ex.Message}");
-            }
+
+            (universities, totalCount) = await universityService.GetUniversitiesByFiltersAsync(userId, (currentPage - 1) * pageSize, pageSize, isActive);
         }
+        catch (Exception)
+        {
+            universities = new List<UniversityDto>();
+            totalCount = 0;
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
 
-        showModal = false;
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
         await LoadUniversities();
     }
 
-    private async Task ToggleActivateUniversity(Guid id)
+    private async Task ClearSearch()
     {
-        await universityService.ToggleActivateUniversityAsync(id);
+        searchTerm = string.Empty;
+        await ApplyFilters();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedStatus = string.Empty;
+        currentPage = 1;
         await LoadUniversities();
     }
 
-    private async Task DeleteUniversity(Guid id)
+    private async Task ChangePageSize(int newPageSize)
     {
-        await universityService.DeleteAsync(id, userId);
+        pageSize = newPageSize;
+        currentPage = 1;
+        await LoadUniversities();
+    }
+
+    private async Task GoToPage(int page)
+    {
+        if (page < 1 || page > TotalPages || page == currentPage) return;
+        
+        currentPage = page;
         await LoadUniversities();
     }
 
@@ -222,6 +460,155 @@ else
             currentPage--;
             await LoadUniversities();
         }
+    }
+
+    private void ShowAddModal()
+    {
+        selectedUniversity = new UniversityDto();
+        ShowValidation = false;
+        showModal = true;
+    }
+
+    private void ShowEditModal(UniversityDto uni)
+    {
+        selectedUniversity = new UniversityDto
+        {
+            Id = uni.Id,
+            Name = uni.Name,
+            Code = uni.Code,
+            ContactEmail = uni.ContactEmail
+        };
+        ShowValidation = false;
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        selectedUniversity = new UniversityDto();
+        ShowValidation = false;
+    }
+
+    private void ShowDeleteConfirmation(UniversityDto uni)
+    {
+        universityToDelete = uni;
+        showDeleteModal = true;
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+        universityToDelete = null;
+    }
+
+    private async Task SaveUniversity()
+    {
+        ShowValidation = true;
+        
+        if (!IsFormValid())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if (selectedUniversity.Id == Guid.Empty)
+                await CreateNewUniversity(selectedUniversity, userId);
+            else
+                await UpdateExistingUniversity(selectedUniversity, userId);
+
+            showModal = false;
+            await LoadUniversities();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - you might want to show a toast here
+            Console.WriteLine($"Error processing university: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ConfirmDelete()
+    {
+        if (universityToDelete == null) return;
+
+        isDeleting = true;
+        StateHasChanged();
+
+        try
+        {
+            await universityService.DeleteAsync(universityToDelete.Id, userId);
+            showDeleteModal = false;
+            await LoadUniversities();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error deleting university: {ex.Message}");
+        }
+        finally
+        {
+            isDeleting = false;
+            universityToDelete = null;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleActivateUniversity(Guid id)
+    {
+        try
+        {
+            await universityService.ToggleActivateUniversityAsync(id);
+            await LoadUniversities();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            Console.WriteLine($"Error toggling university status: {ex.Message}");
+        }
+    }
+
+    private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(selectedUniversity.Name) &&
+               !string.IsNullOrWhiteSpace(selectedUniversity.Code) &&
+               IsValidEmail(selectedUniversity.ContactEmail ?? string.Empty);
+    }
+
+    private bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email)) return false;
+        
+        try
+        {
+            var addr = new System.Net.Mail.MailAddress(email);
+            return addr.Address == email;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private MarkupString HighlightSearchTerm(string text, string searchTerm)
+    {
+        if (string.IsNullOrEmpty(searchTerm) || string.IsNullOrEmpty(text))
+            return new MarkupString(text);
+
+        var highlightedText = text.Replace(
+            searchTerm,
+            $"<mark class='bg-secondary text-white px-1 rounded'>{searchTerm}</mark>",
+            StringComparison.OrdinalIgnoreCase);
+
+        return new MarkupString(highlightedText);
     }
 
     private Guid GetUserIdFromAuthState(AuthenticationState authState)

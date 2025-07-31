@@ -1,128 +1,106 @@
 ﻿@page "/test/{StudentSubmissionId:guid}/start"
-@inject ITestSessionService TestSessionService
-@inject NavigationManager Navigation
-@inject JavaScriptService JSService
-
 @using AptitudeTestApp.Application.DTOs
 @using AptitudeTestApp.Application.Interfaces
 @using AptitudeTestApp.Application.Services
 @using AptitudeTestApp.Data.Models
 @using AptitudeTestApp.Shared.Enums
-@using Radzen
-@using Radzen.Blazor
+@inject ITestSessionService TestSessionService
+@inject IStudentSubmissionService StudentSubmissionService
+@inject NavigationManager Navigation
+@inject JavaScriptService JSService
+@inject IToastService ToastService
 
 @rendermode InteractiveServer
 
-<PageTitle>Start Test</PageTitle>
+<PageTitle>Test Instructions</PageTitle>
 
-@if (submission is not null)
+@if (submission is null)
 {
-    <RadzenCard class="rz-m-4 rz-shadow-6" Style="max-width: auto; margin: 2rem auto;">
-        <RadzenRow class="rz-text-align-center rz-mb-4">
-            <RadzenColumn Size="12">
-                <RadzenIcon Icon="assignment" Style="font-size: 3rem; color: var(--rz-primary);" class="rz-mb-3"/>
-                <RadzenText TextStyle="TextStyle.H3" class="rz-mb-2">@submission.TestSession.TestName</RadzenText>
-                <RadzenText TextStyle="TextStyle.Subtitle1" class="rz-text-secondary-color">
-                    Please read the instructions carefully before starting
-                </RadzenText>
-            </RadzenColumn>
-        </RadzenRow>
-
-        <RadzenCard class="rz-background-color-info-lighter rz-mb-4">
-            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">
-                <RadzenIcon Icon="info" class="rz-mr-2"/>
-                Test Information
-            </RadzenText>
-            <RadzenRow>
-                <RadzenColumn Size="12" SizeMD="6">
-                    <div class="rz-mb-2">
-                        <RadzenIcon Icon="timer" class="rz-mr-2 rz-text-secondary-color"/>
-                        <strong>Duration:</strong> @submission.TestSession.TimeLimit minutes
-                    </div>
-                    <div class="rz-mb-2">
-                        <RadzenIcon Icon="quiz" class="rz-mr-2 rz-text-secondary-color"/>
-                        <strong>Test Level:</strong> @QuestionDifficulty.Medium
-                    </div>
-                </RadzenColumn>
-                <RadzenColumn Size="12" SizeMD="6">
-                    <div class="rz-mb-2">
-                        <RadzenIcon Icon="tab" class="rz-mr-2 rz-text-secondary-color"/>
-                        <strong>Tab Switches Allowed:</strong> @submission.TestSession.MaxTabSwitches
-                    </div>
-                    <div class="rz-mb-2">
-                        <RadzenIcon Icon="shuffle" class="rz-mr-2 rz-text-secondary-color"/>
-                        <strong>Questions:</strong> Randomized order
-                    </div>
-                </RadzenColumn>
-            </RadzenRow>
-        </RadzenCard>
-
-        <RadzenCard class="rz-background-color-warning-lighter rz-mb-4">
-            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">
-                <RadzenIcon Icon="warning" class="rz-mr-2"/>
-                Important Instructions
-            </RadzenText>
-            <ul>
-                <li>Read each question carefully before selecting your answer</li>
-                <li>The test auto-submits when time expires</li>
-                <li>You can navigate between questions</li>
-                <li>Answers can be changed before final submission</li>
-                <li>Do not refresh the page or switch tabs too often</li>
-                <li>Click "Submit Test" after the last question or if done</li>
-            </ul>
-        </RadzenCard>
-
-        <RadzenCard class="rz-background-color-success-lighter rz-mb-4">
-            <RadzenText TextStyle="TextStyle.H6" class="rz-mb-3">
-                <RadzenIcon Icon="lightbulb" class="rz-mr-2"/>
-                Tips for Success
-            </RadzenText>
-            <ul>
-                <li>Manage your time wisely</li>
-                <li>No negative marking – answer all questions</li>
-                <li>Review your answers if time permits</li>
-                <li>Stay calm and focused</li>
-            </ul>
-        </RadzenCard>
-
-        <RadzenRow class="rz-text-align-center rz-mt-4">
-            <RadzenColumn Size="12">
-                <RadzenCheckBox @bind-Value="@agreedToTerms" Name="terms" class="rz-mr-2"/>
-                <RadzenLabel Text="I have read and understood the instructions" Component="terms" class="rz-mr-4" />
-                <br/>
-                <RadzenButton Click="StartTest"
-                             Disabled="@(!agreedToTerms)"
-                             ButtonStyle="ButtonStyle.Primary"
-                             Size="ButtonSize.Large"
-                             Icon="play_arrow"
-                             Text="Start Test"
-                             class="rz-mt-3" />
-            </RadzenColumn>
-        </RadzenRow>
-    </RadzenCard>
+    <div class="vh-90 d-flex align-items-center justify-content-center bg-white text-dark">
+        <div class="text-center">
+            <div class="spinner-border text-black" role="status"></div>
+            <p class="mt-3">Loading test details...</p>
+        </div>
+    </div>
 }
 else
 {
-    <RadzenCard class="rz-p-4 rz-text-align-center">
-        <RadzenText Text="Loading..." />
-        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-    </RadzenCard>
+    <div class="bg-white text-dark d-flex justify-content-center align-items-center px-3" style="min-height: 88vh;">
+        <div class="container" style="max-width: 680px;">
+            <div class="border border-dark p-5 rounded">
+                <h1 class="display-5 fw-bold text-center mb-4 border-bottom pb-2">@submission.TestSession.TestName</h1>
+
+                <div class="mb-4">
+                    <h5 class="text-uppercase fw-semibold mb-3">
+                        <i class="bi bi-info-circle me-2"></i>Test Summary
+                    </h5>
+                    <div class="row small">
+                        <div class="col-6"><i class="bi bi-clock me-2"></i>Duration: <strong>@submission.TestSession.TimeLimit min</strong></div>
+                        <div class="col-6"><i class="bi bi-shuffle me-2"></i>Randomized: <strong>Yes</strong></div>
+                        <div class="col-6"><i class="bi bi-browser-edge me-2"></i>Max Tab Switches: <strong>@submission.TestSession.MaxTabSwitches</strong></div>
+                        <div class="col-6"><i class="bi bi-diagram-3 me-2"></i>Difficulty: <strong>Medium</strong></div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-uppercase fw-semibold mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Instructions
+                    </h5>
+                    <ul class="small ps-3">
+                        <li>Read each question carefully.</li>
+                        <li>Do not refresh or navigate away.</li>
+                        <li>Tab switches are tracked.</li>
+                        <li>Auto submit on time expiry.</li>
+                        <li>You can submit only once.</li>
+                    </ul>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input type="checkbox" class="form-check-input bg-white border-dark" id="agree" @bind="agreedToTerms" />
+                    <label class="form-check-label" for="agree">I have read and understood the above instructions.</label>
+                </div>
+
+                <div class="text-center">
+                    <button class="btn btn-outline-dark btn-lg px-4 fw-bold w-100"
+                            disabled="@(!agreedToTerms)"
+                            @onclick="StartTest">
+                        <i class="bi bi-play-fill me-2"></i> Start the Test
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
     [Parameter] public required Guid StudentSubmissionId { get; set; }
-
-    private StudentSubmission? submission;
+    private StudentSubmissionDto? submission;
     private bool agreedToTerms = false;
 
     protected override async Task OnInitializedAsync()
     {
-        submission = await TestSessionService.GetSubmissionAsync(StudentSubmissionId);
+        submission = await StudentSubmissionService.GetSubmissionDetailsByIdAsync(StudentSubmissionId);
     }
 
     private async Task StartTest()
     {
-        await JSService.InitializeAntiCheat(StudentSubmissionId, submission.TestSession.MaxTabSwitches);
-        Navigation.NavigateTo($"/test/{StudentSubmissionId}/questions");
+        if (submission?.TestSession != null)
+        {
+            if (submission is null ||
+                submission.Status == TestStatus.Completed ||
+                submission.Status == TestStatus.Disqualified ||
+                DateTime.UtcNow > submission.StartTime.AddMinutes(submission.TestSession.TimeLimit))
+            {
+                Navigation.NavigateTo("/test/unavailable", forceLoad: true);
+                return;
+            }
+
+            await JSService.InitializeAntiCheat(StudentSubmissionId, submission.TestSession.MaxTabSwitches);
+            Navigation.NavigateTo($"/test/{StudentSubmissionId}/questions");
+        }
+        else
+        {
+            ToastService.Error("Unable to start test", "Test session not found", 5000);
+        }
     }
 }

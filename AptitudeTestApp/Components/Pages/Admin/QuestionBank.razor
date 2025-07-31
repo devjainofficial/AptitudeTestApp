@@ -4,8 +4,6 @@
 @using AptitudeTestApp.Application.DTOs
 @using AptitudeTestApp.Application.Interfaces
 @using Microsoft.AspNetCore.Components.Authorization
-@using Radzen
-@using Radzen.Blazor
 @using System.Security.Claims
 
 @inject IQuestionService QuestionService
@@ -17,68 +15,288 @@
 @rendermode InteractiveServer
 
 <div class="px-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="text-dark">Question Bank</h2>
-
-        <RadzenButton Icon="add_circle" Text="Add New Question"
-                      Click="@NavigateToAddPage"
-                      Style="background-color: #000; color: white; border-radius: 8px;" />
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-dark mb-1">Question Bank</h2>
+            <small class="text-muted">
+                @if (totalCount > 0)
+                {
+                    <span>Showing @((currentPage - 1) * pageSize + 1) - @(Math.Min(currentPage * pageSize, totalCount)) of @totalCount questions</span>
+                }
+                else
+                {
+                    <span>No questions found</span>
+                }
+            </small>
+        </div>
+        <button class="btn btn-dark rounded-pill px-4 shadow-sm" @onclick="NavigateToAddPage">
+            <i class="fa fa-plus-circle me-2"></i>Add New Question
+        </button>
     </div>
 
-    <RadzenDataGrid @ref="grid" Data="@pagedQuestions" TItem="QuestionDto" Count="@totalCount"
-                    LoadData="@LoadData" AllowPaging="true" PageSize="10"
-                    AllowSorting="true" EditMode="DataGridEditMode.Single"
-                    RowUpdate="@OnUpdateQuestion"
-                    Class="shadow-sm border rounded"
-                    Style="width:100%; font-size: 15px;">
-
-        <Columns>
-            <RadzenDataGridColumn TItem="QuestionDto" Property="QuestionText" Title="Question">
-                <Template Context="q">
-                    <div style="white-space: normal; word-break: break-word;">
-                        @q.QuestionText
+    <!-- Filters and Search -->
+    <div class="card border-dark mb-4">
+        <div class="card-body bg-light">
+            <div class="row g-3">
+                 <div class="col-md-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label fw-bold text-dark mb-0">Search Questions</label>
+                        @* <span class="badge bg-dark text-white">
+                            @totalCount found
+                        </span> *@
                     </div>
-                </Template>
-                <EditTemplate Context="q">
-                    <RadzenTextBox @bind-Value="q.QuestionText" Style="width:100%" />
-                </EditTemplate>
-            </RadzenDataGridColumn>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-dark">
+                            <i class="fa fa-search text-dark"></i>
+                        </span>
+                        <input type="text" 
+                               class="form-control border-dark" 
+                               placeholder="Search questions..." 
+                               @bind="searchTerm" 
+                               @bind:event="oninput" />
+                        @if (!string.IsNullOrEmpty(searchTerm))
+                        {
+                            <button class="btn btn-outline-dark" type="button" @onclick="ClearSearch">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        }
+                    </div>
+                </div>
 
-            <RadzenDataGridColumn TItem="QuestionDto" Property="QuestionType" Title="Type" />
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-dark">Difficulty Filter</label>
+                   <select class="form-select border-dark" @bind="selectedDifficulty" @bind:after="ApplyFilters">
+                        <option value="">All Difficulties</option>
+                        @foreach (var difficulty in difficultyLevels)
+                        {
+                            <option value="@difficulty">@difficulty</option>
+                        }
+                    </select>
+                </div>
 
-            <RadzenDataGridColumn TItem="QuestionDto" Property="DifficultyLevel" Title="Difficulty">
-                <EditTemplate Context="q">
-                    <RadzenDropDown @bind-Value="q.DifficultyLevel"
-                                    Data="@difficultyLevels"
-                                    TValue="QuestionDifficulty"
-                                    Style="width:100%" />
-                </EditTemplate>
-            </RadzenDataGridColumn>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold text-dark">Status</label>
+                    <select class="form-select border-dark" @bind="selectedStatus" @bind:after="ApplyFilters">
+                        <option value="">All Status</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
 
-            <RadzenDataGridColumn TItem="QuestionDto" Property="Points" Title="Points">
-                <EditTemplate Context="q">
-                    <RadzenNumeric TValue="int" @bind-Value="q.Points" Min="1" Max="10" />
-                </EditTemplate>
-            </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="QuestionDto" Property="IsActive" Title="Active">
-                <EditTemplate Context="q">
-                    <RadzenCheckBox @bind-Value="q.IsActive" />
-                </EditTemplate>
-            </RadzenDataGridColumn>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-dark me-2" @onclick="ResetFilters">
+                        <i class="fa fa-arrow-clockwise me-1"></i>Reset
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Show @pageSize
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(5)">5 per page</button></li>
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(10)">10 per page</button></li>
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(25)">25 per page</button></li>
+                            <li><button class="dropdown-item" @onclick="() => ChangePageSize(50)">50 per page</button></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <RadzenDataGridColumn TItem="QuestionDto" Title="Actions" Context="q">
-                <Template Context="q">
-                    <RadzenButton Icon="edit" Size="ButtonSize.Small" Style="background: #000" Click="@(() => grid.EditRow(q))" />
-                </Template>
-                <EditTemplate Context="q">
-                    <RadzenButton Icon="save" Size="ButtonSize.Small" Style="margin-right:5px; background: #ddd; color: #000" Click="@(() => grid.UpdateRow(q))" />
-                    <RadzenButton Icon="cancel" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Secondary" Style="background: #333; color:#fff" Click="@(() => grid.CancelEditRow(q))" />
-                </EditTemplate>
-            </RadzenDataGridColumn>
-        </Columns>
-    </RadzenDataGrid>
+    <!-- Loading State -->
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-dark" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading questions...</p>
+        </div>
+    }
+    else if (pagedQuestions.Any())
+    {
+        <!-- Questions Grid -->
+        <div class="row">
+            @foreach (var question in pagedQuestions)
+            {
+                <div class="col-12 mb-3">
+                    <div class="card border-dark shadow-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <!-- Question Content -->
+                                <div class="col-md-6">
+                                    @if (editingQuestionId == question.Id)
+                                    {
+                                        <div class="mb-2">
+                                            <textarea class="form-control border-dark" 
+                                                      rows="3" 
+                                                      @bind="editingQuestion.QuestionText"
+                                                      placeholder="Enter question text..."></textarea>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <h6 class="card-title mb-2 text-dark">
+                                            @HighlightSearchTerm(question.QuestionText, searchTerm)
+                                        </h6>
+                                    }
+                                    
+                                    <div class="d-flex gap-2 mb-2">
+                                        <span class="badge bg-dark text-white">@question.QuestionType</span>
+                                        <span class="badge @GetDifficultyBadgeClass(question.DifficultyLevel.ToString())">
+                                            @question.DifficultyLevel
+                                        </span>
+                                        <span class="badge @(question.IsActive ? "bg-white text-dark border border-dark" : "bg-secondary text-white")">
+                                            @(question.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </div>
+                                </div>
 
+                                <!-- Points and Actions -->
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            @if (editingQuestionId == question.Id)
+                                            {
+                                                <div class="row g-2">
+                                                    <div class="col-6">
+                                                        <label class="form-label small">Points</label>
+                                                        <input type="number" class="form-control form-control-sm border-dark" 
+                                                               min="1" max="10" @bind="editingQuestion.Points" />
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <label class="form-label small">Difficulty</label>
+                                                        <select class="form-select form-select-sm border-dark" @bind="editingQuestion.DifficultyLevel">
+                                                            @foreach (var diff in difficultyLevels)
+                                                            {
+                                                                <option value="@diff">@diff</option>
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="form-check mt-2">
+                                                    <input class="form-check-input border-dark" type="checkbox" 
+                                                           id="active-@question.Id" @bind="editingQuestion.IsActive">
+                                                    <label class="form-check-label small" for="active-@question.Id">
+                                                        Active
+                                                    </label>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="text-center">
+                                                    <div class="fs-4 fw-bold text-dark">@question.Points</div>
+                                                    <small class="text-muted">Points</small>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Action Buttons -->
+                                        <div class="d-flex gap-2">
+                                            @if (editingQuestionId == question.Id)
+                                            {
+                                                <button class="btn btn-sm btn-dark" @onclick="() => SaveQuestion(question.Id)">
+                                                    <i class="fa fa-check"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-dark" @onclick="CancelEdit">
+                                                    <i class="fa fa-x"></i>
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn btn-sm btn-outline-dark" @onclick="() => StartEdit(question)">
+                                                    <i class="fa fa-pencil"></i>
+                                                </button>
+                                                <button class="btn btn-sm @(question.IsActive ? "btn-outline-secondary" : "btn-dark")" 
+                                                        @onclick="() => ToggleStatus(question)">
+                                                    <i class="fa fa-@(question.IsActive ? "eye" : "eye-slash")"></i>
+                                                </button>
+                                                 <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteQuestion(question.Id)">
+                                                    <i class="fa fa-trash"></i>
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-muted">
+                Page @currentPage of @totalPages (@totalCount total questions)
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="() => GoToPage(1)" disabled="@(currentPage == 1)">
+                            <i class="fa fa-angle-double-left"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="() => GoToPage(currentPage - 1)" disabled="@(currentPage == 1)">
+                            <i class="fa fa-chevron-left"></i>
+                        </button>
+                    </li>
+
+                    @for (int i = Math.Max(1, currentPage - 2); i <= Math.Min(totalPages, currentPage + 2); i++)
+                    {
+                        var pageNumber = i;
+                        <li class="page-item @(pageNumber == currentPage ? "active" : "")">
+                            <button class="page-link @(pageNumber == currentPage ? "bg-dark border-dark text-white" : "bg-white border-dark text-dark")"
+                                    @onclick="@(() => GoToPage(pageNumber))">
+                                @pageNumber
+                            </button>
+                        </li>
+                    }
+
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="() => GoToPage(currentPage + 1)" disabled="@(currentPage == totalPages)">
+                            <i class="fa fa-chevron-right"></i>
+                        </button>
+                    </li>
+                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                        <button class="page-link border-dark text-dark bg-white" @onclick="() => GoToPage(totalPages)" disabled="@(currentPage == totalPages)">
+                            <i class="fa fa-angle-double-right"></i>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+    else
+    {
+        <!-- Empty State -->
+        <div class="text-center py-5">
+            <i class="fa fa-question-circle fs-1 text-muted mb-3"></i>
+            <h4 class="text-muted">No Questions Found</h4>
+            <p class="text-muted mb-4">
+                @if (!string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(selectedDifficulty) || !string.IsNullOrEmpty(selectedStatus))
+                {
+                    <span>No questions match your current filters.</span>
+                }
+                else
+                {
+                    <span>Get started by adding your first question to the bank.</span>
+                }
+            </p>
+            @if (!string.IsNullOrEmpty(searchTerm) || !string.IsNullOrEmpty(selectedDifficulty) || !string.IsNullOrEmpty(selectedStatus))
+            {
+                <button class="btn btn-outline-dark me-2" @onclick="ResetFilters">
+                    <i class="fa fa-arrow-clockwise me-1"></i>Clear Filters
+                </button>
+            }
+            <button class="btn btn-dark" @onclick="NavigateToAddPage">
+                <i class="fa fa-plus-circle me-1"></i>Add First Question
+            </button>
+        </div>
+    }
 </div>
 
 @code {
@@ -86,9 +304,22 @@
 
     private List<QuestionDto> pagedQuestions = new();
     private int totalCount = 0;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private int totalPages => (int)Math.Ceiling((double)totalCount / pageSize);
+
     private Guid userId = Guid.Empty;
-    private bool firstRender = true;
-    private RadzenDataGrid<QuestionDto>? grid;
+    private bool isLoading = true;
+
+    // Filtering and Search
+    private string searchTerm = string.Empty;
+    private string selectedDifficulty = string.Empty;
+    private string selectedStatus = string.Empty;
+
+    // Editing
+    private Guid editingQuestionId = Guid.Empty;
+    private QuestionDto editingQuestion = new();
+
     private IEnumerable<QuestionDifficulty> difficultyLevels = Enum.GetValues(typeof(QuestionDifficulty)).Cast<QuestionDifficulty>();
 
     protected override async Task OnInitializedAsync()
@@ -106,37 +337,184 @@
     {
         if (firstRender && userId != Guid.Empty)
         {
-            this.firstRender = false;
-            await LoadData(new LoadDataArgs { Skip = 0, Top = 10 });
+            await LoadData();
             StateHasChanged();
         }
     }
 
-    private async Task LoadData(LoadDataArgs args)
+    private async Task LoadData()
     {
-        int skip = args.Skip ?? 0;
-        int take = args.Top ?? 10;
+        isLoading = true;
+        StateHasChanged();
 
-        var result = await QuestionService.GetAllAsync(userId, skip, take);
-        pagedQuestions = result;
-        totalCount = result.Count;
+        try
+        {
+            int skip = (currentPage - 1) * pageSize;
+
+            QuestionDifficulty? difficulty = null;
+
+            if (!string.IsNullOrEmpty(selectedDifficulty) && 
+            Enum.TryParse<QuestionDifficulty>(selectedDifficulty, true, out var parsedDifficulty))
+            {
+                difficulty = parsedDifficulty;
+            }
+
+            bool? isActive = null;
+
+            if (!string.IsNullOrWhiteSpace(selectedStatus) && 
+                bool.TryParse(selectedStatus, out var parsedStatus))
+            {
+                isActive = parsedStatus;
+            }
+
+            (List<QuestionDto>? result, totalCount) = await QuestionService.GetQuestionsByFiltersAsync
+                (userId, skip, pageSize, isActive, difficulty);
+
+            pagedQuestions = result;
+        }
+        catch (Exception)
+        {
+            totalCount = 0;
+            pagedQuestions = new List<QuestionDto>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
     }
 
-    private async Task OnUpdateQuestion(QuestionDto updated)
+    private async Task GoToPage(int page)
     {
-        await QuestionService.UpdateAsync(updated, userId);
-        // if (result)
-        // {
-        //     ToastService.Success("Success", "Question updated successfully");
-        // }
-        // else
-        // {
-        //     ToastService.Error("Error", "Update failed");
-        // }
+        if (page < 1 || page > totalPages || page == currentPage) return;
+
+        currentPage = page;
+        await LoadData();
+    }
+
+    private async Task ChangePageSize(int newPageSize)
+    {
+        pageSize = newPageSize;
+        currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task ApplyFilters()
+    {
+        currentPage = 1;
+        await LoadData();
+    }
+
+    private async Task HandleSearchKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApplyFilters();
+        }
+    }
+
+    private async Task ClearSearch()
+    {
+        searchTerm = string.Empty;
+        await ApplyFilters();
+    }
+
+    private async Task ResetFilters()
+    {
+        searchTerm = string.Empty;
+        selectedDifficulty = string.Empty;
+        selectedStatus = string.Empty;
+        currentPage = 1;
+        await LoadData();
+    }
+
+    private void StartEdit(QuestionDto question)
+    {
+        editingQuestionId = question.Id;
+
+        editingQuestion = question;
+    }
+
+    private void CancelEdit()
+    {
+        editingQuestionId = Guid.Empty;
+        editingQuestion = new QuestionDto();
+    }
+
+    private async Task SaveQuestion(Guid questionId)
+    {
+        try
+        {
+            await QuestionService.UpdateAsync(editingQuestion, userId);
+
+            var index = pagedQuestions.FindIndex(q => q.Id == questionId);
+            if (index != -1)
+            {
+                pagedQuestions[index] = editingQuestion;
+            }
+
+            editingQuestionId = Guid.Empty;
+            editingQuestion = new QuestionDto();
+
+            ToastService.Success("Success", "Question updated successfully", 5000);
+        }
+        catch (Exception)
+        {
+            ToastService.Error("Error", "Failed to update question", 5000);
+        }
+    }
+
+    private async Task ToggleStatus(QuestionDto question)
+    {
+        try
+        {
+            question.IsActive = !question.IsActive;
+
+            QuestionDto? updatedQuestion = question;
+
+            await QuestionService.UpdateAsync(updatedQuestion, userId);
+
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            
+        }
+    }
+
+    private async Task DeleteQuestion(Guid questionId)
+    {
+        await QuestionService.DeleteAsync(questionId, userId);
+
+        await LoadData();
     }
 
     private void NavigateToAddPage()
     {
         Nav.NavigateTo("/admin/add-question");
+    }
+
+    private string GetDifficultyBadgeClass(string difficulty)
+    {
+        return difficulty?.ToLower() switch
+        {
+            "easy" => "bg-white text-dark border border-dark",
+            "medium" => "bg-secondary text-white",
+            "hard" => "bg-danger text-white",
+            _ => "bg-dark text-white"
+        };
+    }
+
+    private MarkupString HighlightSearchTerm(string text, string searchTerm)
+    {
+        if (string.IsNullOrEmpty(searchTerm) || string.IsNullOrEmpty(text))
+            return new MarkupString(text);
+
+        var highlightedText = text.Replace(
+            searchTerm,
+            $"<mark class='bg-secondary text-white px-1 rounded'>{searchTerm}</mark>",
+            StringComparison.OrdinalIgnoreCase);
+
+        return new MarkupString(highlightedText);
     }
 }

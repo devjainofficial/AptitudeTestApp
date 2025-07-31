@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using AptitudeTestApp.Data.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace AptitudeTestApp.Application.DTOs;
 
@@ -15,5 +16,6 @@ public class TestSessionDto : BaseDto<Guid>
     public DateTime EndDate { get; set; }
     public string Token { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public bool ShowResult { get; set; } = false;
     public virtual UniversityDto University { get; set; } = new UniversityDto();
 }

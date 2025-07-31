@@ -31,11 +31,11 @@ public class JavaScriptService(IJSRuntime jsRuntime)
         var serviceProvider = ServiceProviderAccessor.ServiceProvider;
 
         using var scope = serviceProvider?.CreateScope();
-        var testSessionService = scope?.ServiceProvider.GetService<ITestSessionService>();
+        var studentSessionService = scope?.ServiceProvider.GetService<IStudentSubmissionService>();
 
-        if (testSessionService is not null)
+        if (studentSessionService is not null)
         {
-            await testSessionService.SubmitTestAsync(submissionId, reason);
+            await studentSessionService.SubmitTestAsync(submissionId, reason);
         }
     }
 

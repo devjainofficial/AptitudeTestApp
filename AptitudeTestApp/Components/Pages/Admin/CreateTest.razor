@@ -17,7 +17,6 @@
 
 <PageTitle>Create Test</PageTitle>
 
-
 @if (IsLoading)
 {
     <div class="spinner-border text-primary" role="status">
@@ -30,82 +29,208 @@ else
         <h2 class="mb-2 text-dark">Create New Test</h2>
         <EditForm Model="@TestSessionDto" OnValidSubmit="HandleValidSubmit">
             <DataAnnotationsValidator />
-            <ValidationSummary />
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Test Name</label>
-                        <InputText class="form-control" @bind-Value="TestSessionDto.TestName" placeholder="Enter test name..." />
-                    </div>
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Test Name</label>
+                    <InputText class="form-control" @bind-Value="TestSessionDto.TestName" placeholder="Enter test name..." />
+                    <ValidationMessage For="() => TestSessionDto.TestName" class="text-danger" />
+                </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">University</label>
-                        <InputSelect class="form-select" @bind-Value="SelectedUniversityId">
-                            <option value="" selected>-- Select University --</option>
-                            @foreach (var university in Universities)
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">University</label>
+                    <InputSelect class="form-select" @bind-Value="SelectedUniversityId">
+                        <option value="@Guid.Empty" selected disabled>-- Select University --</option>
+                        @foreach (var university in Universities)
+                        {
+                            <option value="@university.Id">@university.Name</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="() => SelectedUniversityId" class="text-danger" />
+                </div>
+            </div>
+
+            <hr />
+
+            <!-- Question Selection Section -->
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <label class="form-label fw-bold mb-0 text-dark">Select Questions</label>
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-dark text-white">
+                            @SelectedQuestionIds.Count of @FilteredQuestions.Count selected
+                        </span>
+                        <div class="input-group" style="width: 300px;">
+                            <span class="input-group-text bg-white border-dark">
+                                <i class="fa fa-search text-dark"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control form-control-sm border-dark"
+                                   placeholder="Search questions..."
+                                   @bind="SearchTerm"
+                                   @bind:event="oninput" />
+                            @if (!string.IsNullOrEmpty(SearchTerm))
                             {
-                                <option value="@university.Id">@university.Name</option>
+                                <button class="btn btn-outline-dark btn-sm" type="button" @onclick="ClearSearch">
+                                    <i class="fa fa-x"></i>
+                                </button>
                             }
-                        </InputSelect>
+                        </div>
                     </div>
                 </div>
 
-                <hr />
+                <!-- Selection Controls -->
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button"
+                            class="btn btn-dark btn-sm"
+                            @onclick="SelectAllQuestions"
+                            disabled="@(FilteredQuestions.Count == 0)">
+                        <i class="bi bi-check-all me-1"></i>
+                        Select All (@FilteredQuestions.Count)
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-dark btn-sm"
+                            @onclick="DeselectAllQuestions"
+                            disabled="@(SelectedQuestionIds.Count == 0)">
+                        <i class="bi bi-x-square me-1"></i>
+                        Deselect All
+                    </button>
+                    <button type="button"
+                            class="btn btn-outline-dark btn-sm"
+                            @onclick="SelectRandomQuestions">
+                        <i class="bi bi-shuffle me-1"></i>
+                        Random 10
+                    </button>
+                </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Select Questions</label>
-                    <div class="border rounded p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
-                        @foreach (var question in AllQuestions)
+                <!-- Questions List -->
+                <div class="border border-dark rounded p-3 bg-light" style="max-height: 350px; overflow-y: auto;">
+                    @if (FilteredQuestions.Any())
+                    {
+                        @foreach (var question in FilteredQuestions)
                         {
-                            <div class="form-check mb-2">
+                            <div class="form-check mb-2 p-2 rounded border @(SelectedQuestionIds.Contains(question.Id) ? "bg-dark text-white border-dark" : "border-secondary")">
                                 <input type="checkbox"
-                                        class="form-check-input"
-                                        id="@($"q-{question.Id}")"
-                                        value="@question.Id"
-                                        checked="@SelectedQuestionIds.Contains(question.Id)"
-                                        @onchange="(e) => OnQuestionSelectionChanged(e, question.Id)" />
-                                <label class="form-check-label" for="@($"q-{question.Id}")">
-                                    @question.QuestionText
+                                       class="form-check-input border-dark d-none"
+                                       id="@($"q-{question.Id}")"
+                                       value="@question.Id"
+                                       checked="@SelectedQuestionIds.Contains(question.Id)"
+                                       @onchange="(e) => OnQuestionSelectionChanged(e, question.Id)"/>
+                                <label class="form-check-label w-100" style="cursor:pointer" for="@($"q-{question.Id}")">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-medium">
+                                                @HighlightSearchTerm(question.QuestionText, SearchTerm)
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(question.CategoryName))
+                                            {
+                                                <small class="@(SelectedQuestionIds.Contains(question.Id) ? "text-light" : "text-muted")">
+                                                    <i class="bi bi-tag me-1"></i>@question.CategoryName
+                                                </small>
+                                            }
+                                        </div>
+                                        @if (!string.IsNullOrEmpty(question.DifficultyLevel.ToString()))
+                                        {
+                                            <span class="badge @GetDifficultyBadgeClass(question.DifficultyLevel.ToString()) ms-2">
+                                                @question.DifficultyLevel.ToString().ToUpper()
+                                            </span>
+                                        }
+                                    </div>
                                 </label>
                             </div>
                         }
-                    </div>
+                    }
+                    else
+                    {
+                        <div class="text-center text-muted py-4">
+                            
+                            <i class="fa fa-search fs-1 mb-2"></i>
+
+                            @if (!string.IsNullOrWhiteSpace(SearchTerm))
+                            {
+                                <p class="mb-1">No questions found matching "@SearchTerm"</p>
+                            }
+                            else
+                            {
+                                <p class="mb-1">No questions found.</p>
+                            }
+
+                            <button type="button" class="btn btn-outline-dark btn-sm" @onclick="ClearSearch">
+                                Clear search
+                            </button>
+                            <button type="button" class="btn btn-dark btn-sm" @onclick="NavigateToAddQuestion">
+                                Create Question
+                            </button>
+                        </div>
+                    }
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Time Limit (minutes)</label>
-                        <InputNumber class="form-control" @bind-Value="TestSessionDto.TimeLimit" />
+                @if (SelectedQuestionIds.Count > 0)
+                {
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            <strong>Selected questions:</strong> @string.Join(", ", GetSelectedQuestionTitles().Take(3))
+                            @if (SelectedQuestionIds.Count > 3)
+                            {
+                                <span> and @(SelectedQuestionIds.Count - 3) more...</span>
+                            }
+                        </small>
                     </div>
+                }
+            </div>
 
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Passing Score</label>
-                        <InputNumber class="form-control" @bind-Value="TestSessionDto.PassingScore" />
-                    </div>
-
-                    <div class="col-md-4">
-                        <label class="form-label fw-bold">Max Tab Switches</label>
-                        <InputNumber class="form-control" @bind-Value="TestSessionDto.MaxTabSwitches" />
-                    </div>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Time Limit (minutes)</label>
+                    <InputNumber class="form-control" @bind-Value="TestSessionDto.TimeLimit" />
+                    <ValidationMessage For="() => TestSessionDto.TimeLimit" class="text-danger" />
                 </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">Start Date</label>
-                        <InputDate class="form-control" @bind-Value="TestSessionDto.StartDate" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold">End Date</label>
-                        <InputDate class="form-control" @bind-Value="TestSessionDto.EndDate" />
-                    </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Passing Score</label>
+                    <InputNumber class="form-control" @bind-Value="TestSessionDto.PassingScore" />
+                    <ValidationMessage For="() => TestSessionDto.PassingScore" class="text-danger" />
                 </div>
 
-                <div class="d-grid mt-4">
-                    <button class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm">
-                        <i class="bi bi-rocket-takeoff me-2"></i> Create Test
-                    </button>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Max Tab Switches</label>
+                    <InputNumber class="form-control" @bind-Value="TestSessionDto.MaxTabSwitches" />
+                    <ValidationMessage For="() => TestSessionDto.MaxTabSwitches" class="text-danger" />
                 </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Start Date</label>
+                    <InputDate class="form-control" @bind-Value="TestSessionDto.StartDate" />
+                    <ValidationMessage For="() => TestSessionDto.StartDate" class="text-danger" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">End Date</label>
+                    <InputDate class="form-control" @bind-Value="TestSessionDto.EndDate" />
+                    <ValidationMessage For="() => TestSessionDto.EndDate" class="text-danger" />
+                </div>
+                <div class="col-md-4 mt-4 align-content-end">
+                    <div class="form-check form-switch d-flex align-items-center gap-2">
+                        <input class="form-check-input border border-dark bg-white" type="checkbox"
+                               role="switch" id="show-result" @bind="TestSessionDto.ShowResult"
+                               style="width: 2.5rem; height: 1.4rem;">
+                        <label class="form-check-label fw-semibold text-dark" for="show-result">
+                            Show Results at the End of Exam
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="d-grid mt-4">
+                <button type="submit"
+                        class="btn btn-dark btn-lg rounded-pill px-4 shadow-sm"
+                        disabled="@(SelectedQuestionIds.Count == 0 || SelectedUniversityId == Guid.Empty)">
+                    Create Test (@SelectedQuestionIds.Count questions)
+                </button>
+            </div>
         </EditForm>
     </div>
 }
@@ -122,6 +247,15 @@ else
 
     private bool IsLoading = true;
     private Guid creatorGuid;
+
+    private string SearchTerm = string.Empty;
+    private List<QuestionDto> FilteredQuestions =>
+        string.IsNullOrEmpty(SearchTerm)
+            ? AllQuestions
+            : AllQuestions.Where(q =>
+                q.QuestionText.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(q.CategoryName) && q.CategoryName.Contains(SearchTerm, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,14 +274,14 @@ else
 
     private async Task HandleValidSubmit()
     {
-        if (creatorGuid == Guid.Empty) return;
+        if (creatorGuid == Guid.Empty || SelectedUniversityId == Guid.Empty || SelectedQuestionIds.Count == 0) return;
 
         TestSessionDto.UniversityId = SelectedUniversityId;
         TestSessionDto.SelectedQuestionIds = SelectedQuestionIds;
         TestSessionDto.TotalQuestions = TestSessionDto.SelectedQuestionIds.Count;
         TestSessionDto.CreatorId = creatorGuid;
 
-        TestSession result = await TestSessionService.CreateTestSessionAsync(TestSessionDto, creatorGuid);
+        TestSessionDto result = await TestSessionService.CreateTestSessionAsync(TestSessionDto, creatorGuid);
 
         if (result is not null)
         {
@@ -170,4 +304,81 @@ else
         }
     }
 
+    private void SelectAllQuestions()
+    {
+        var questionsToAdd = FilteredQuestions
+            .Where(q => !SelectedQuestionIds.Contains(q.Id))
+            .Select(q => q.Id);
+
+        SelectedQuestionIds.AddRange(questionsToAdd);
+    }
+
+    private void DeselectAllQuestions()
+    {
+        if (string.IsNullOrEmpty(SearchTerm))
+        {
+            SelectedQuestionIds.Clear();
+        }
+        else
+        {
+            var filteredIds = FilteredQuestions.Select(q => q.Id).ToHashSet();
+            SelectedQuestionIds.RemoveAll(id => filteredIds.Contains(id));
+        }
+    }
+
+    private void SelectRandomQuestions()
+    {
+        var random = new Random();
+        var availableQuestions = AllQuestions
+            .Where(q => !SelectedQuestionIds.Contains(q.Id))
+            .OrderBy(x => random.Next())
+            .Take(10)
+            .Select(q => q.Id);
+
+        SelectedQuestionIds.AddRange(availableQuestions);
+    }
+
+    private void ClearSearch()
+    {
+        SearchTerm = string.Empty;
+    }
+
+    private string GetDifficultyBadgeClass(string difficulty)
+    {
+        return difficulty?.ToLower() switch
+        {
+            "easy" => "bg-white text-dark border border-dark",
+            "medium" => "bg-secondary text-white",
+            "hard" => "bg-danger text-white",
+            _ => "bg-dark text-white"
+        };
+    }
+
+    private List<string> GetSelectedQuestionTitles()
+    {
+        return AllQuestions
+            .Where(q => SelectedQuestionIds.Contains(q.Id))
+            .Select(q => q.QuestionText.Length > 50
+                ? q.QuestionText.Substring(0, 50) + "..."
+                : q.QuestionText)
+            .ToList();
+    }
+
+    private void NavigateToAddQuestion()
+    {
+        Navigation.NavigateTo("/admin/add-question");
+    }
+
+    private MarkupString HighlightSearchTerm(string text, string searchTerm)
+    {
+        if (string.IsNullOrEmpty(searchTerm) || string.IsNullOrEmpty(text))
+            return new MarkupString(text);
+
+        var highlightedText = text.Replace(
+            searchTerm,
+            $"<mark class='bg-secondary text-white px-1 rounded'>{searchTerm}</mark>",
+            StringComparison.OrdinalIgnoreCase);
+
+        return new MarkupString(highlightedText);
+    }
 }

@@ -4,7 +4,7 @@ namespace AptitudeTestApp.Application.DTOs;
 
 public class CreateTestSessionDto : BaseDto<Guid>
 {
-    [Required, MaxLength(200)]
+    [Required(ErrorMessage = "The Test Name field is required."), MaxLength(200)]
     public string TestName { get; set; } = string.Empty;
 
     public string? Description { get; set; }
@@ -20,7 +20,7 @@ public class CreateTestSessionDto : BaseDto<Guid>
     [Range(0, 100)]
     public decimal PassingScore { get; set; } = 60.00m;
 
-    [Range(0, 10)]
+    [Required, Range(0, 10)]
     public int MaxTabSwitches { get; set; } = 3;
 
     [Required]
@@ -29,5 +29,6 @@ public class CreateTestSessionDto : BaseDto<Guid>
     [Required]
     public DateTime EndDate { get; set; } = DateTime.UtcNow.AddDays(1);
 
+    public bool ShowResult { get; set; } = false;
     public List<Guid> SelectedQuestionIds { get; set; } = new();
 }

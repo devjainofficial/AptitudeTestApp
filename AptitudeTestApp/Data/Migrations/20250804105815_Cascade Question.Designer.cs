@@ -4,6 +4,7 @@ using AptitudeTestApp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AptitudeTestApp.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250804105815_Cascade Question")]
+    partial class CascadeQuestion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -676,7 +679,7 @@ namespace AptitudeTestApp.Migrations
                     b.HasOne("AptitudeTestApp.Data.Models.Question", "Question")
                         .WithMany("StudentAnswers")
                         .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("AptitudeTestApp.Data.Models.QuestionOption", "SelectedOption")
@@ -724,7 +727,7 @@ namespace AptitudeTestApp.Migrations
                     b.HasOne("AptitudeTestApp.Data.Models.Question", "Question")
                         .WithMany("TestSessionQuestions")
                         .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("AptitudeTestApp.Data.Models.TestSession", "TestSession")

@@ -37,3 +37,33 @@
 .valid.modified:not([type=checkbox]) {
     outline: 2px solid #fff !important;
 }
+
+.navbar-brand:hover {
+    color: #dc3545 !important;
+    text-decoration: none;
+}
+
+.navbar .nav-link.active {
+    font-weight: bolder !important;
+    color: #000 !important;
+}
+
+.navbar .btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+.dashboard-card {
+    background-color: #ffffff;
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+}
+
+    .dashboard-card:hover {
+        box-shadow: -3px -3px 0 black !important;
+    }
+
+.theme-box {
+    border: 1px solid black !important;
+    box-shadow: 3px 3px 0 black !important;
+}

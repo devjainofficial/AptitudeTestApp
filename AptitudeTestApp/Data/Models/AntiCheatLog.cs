@@ -9,7 +9,7 @@ public class AntiCheatLog : BaseEntity<Guid>
     public string EventType { get; set; } = string.Empty;
 
     public string? EventDetails { get; set; }
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public DateTime Timestamp { get; set; } = DateTime.Now;
 
     // Navigation Properties
     public virtual StudentSubmission Submission { get; set; } = null!;

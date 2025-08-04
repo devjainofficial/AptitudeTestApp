@@ -1,15 +1,14 @@
-﻿<div class="card text-white shadow-sm rounded-4 h-100 border-0" onclick="@OnClick"
-     style="cursor: pointer; background: @(string.IsNullOrWhiteSpace(Gradient) ? "linear-gradient(135deg, #000428, #004e92)" : Gradient);">
+﻿<div class="card rounded-4 h-100 theme-box dashboard-card" onclick="@OnClick" style="cursor: pointer;">
     <div class="card-body d-flex flex-column justify-content-between h-100">
-        <div class="d-flex justify-content-between align-items-start">
-            <div>
-                <h3 class="fw-bold mb-1">@Count</h3>
-                <p class="text-white-50 mb-0">@Title</p>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="text-start">
+                <h5 class="fw-semibold text-dark mb-1">@Title</h5>
+                <h3 class="fw-bold text-dark">@Count</h3>
             </div>
-            <i class="fas fa-@Icon fa-2x text-white-50"></i>
+            <i class="fas fa-@Icon fa-2x text-secondary"></i>
         </div>
-        <div class="mt-3">
-            <a href="@Link" class="text-white text-decoration-none fw-semibold small">
+        <div class="text-start">
+            <a href="@Link" class="text-danger fw-medium small text-decoration-none">
                 View Details <i class="fas fa-arrow-right"></i>
             </a>
         </div>
@@ -20,8 +19,9 @@
     [Parameter] public string Title { get; set; } = "";
     [Parameter] public int Count { get; set; }
     [Parameter] public string Icon { get; set; } = "";
-    [Parameter] public string Gradient { get; set; } = "";
     [Parameter] public string Link { get; set; } = "#";
+
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     private void OnClick()
     {
@@ -30,7 +30,4 @@
             NavigationManager.NavigateTo(Link);
         }
     }
-
-    [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
 }

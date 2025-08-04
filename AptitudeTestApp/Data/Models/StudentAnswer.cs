@@ -8,7 +8,7 @@ public class StudentAnswer : BaseEntity<Guid>
     public bool IsCorrect { get; set; } = false;
     public decimal PointsEarned { get; set; } = 0;
     public int TimeSpent { get; set; } = 0; // seconds
-    public DateTime AnsweredAt { get; set; } = DateTime.UtcNow;
+    public DateTime AnsweredAt { get; set; } = DateTime.Now;
 
     // Navigation Properties
     public virtual StudentSubmission Submission { get; set; } = null!;

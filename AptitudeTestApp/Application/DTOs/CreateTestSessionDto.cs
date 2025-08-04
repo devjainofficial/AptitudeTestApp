@@ -24,10 +24,10 @@ public class CreateTestSessionDto : BaseDto<Guid>
     public int MaxTabSwitches { get; set; } = 3;
 
     [Required]
-    public DateTime StartDate { get; set; } = DateTime.UtcNow;
+    public DateTime StartDate { get; set; } = DateTime.Now;
 
     [Required]
-    public DateTime EndDate { get; set; } = DateTime.UtcNow.AddDays(1);
+    public DateTime EndDate { get; set; } = DateTime.Now.AddDays(1);
 
     public bool ShowResult { get; set; } = false;
     public List<Guid> SelectedQuestionIds { get; set; } = new();

@@ -13,7 +13,7 @@ public class AntiCheatService(IRepository Repo) : IAntiCheatService
             SubmissionId = submissionId,
             EventType = eventType,
             EventDetails = eventDetails,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.Now
         };
 
         await Repo.AddAsync<AntiCheatLog>(log);

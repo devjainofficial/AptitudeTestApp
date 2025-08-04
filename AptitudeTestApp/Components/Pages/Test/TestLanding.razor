@@ -119,7 +119,7 @@ else
         {
             try
             {
-                studentInfo.BrowserInfo = await JS.InvokeAsync<string>("getUserAgent");
+                // studentInfo.BrowserInfo = await JS.InvokeAsync<string>("getUserAgent");
                 studentInfo.IpAddress = await JS.InvokeAsync<string>("getIpAddress");
 
                 jsInteropLoaded = true;

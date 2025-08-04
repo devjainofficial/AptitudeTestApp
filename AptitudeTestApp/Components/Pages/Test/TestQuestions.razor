@@ -159,7 +159,7 @@ else
         if (submission is null ||
             submission.Status == TestStatus.Completed ||
             submission.Status == TestStatus.Disqualified ||
-            DateTime.UtcNow > submission.StartTime.AddMinutes(submission.TestSession.TimeLimit))
+            DateTime.Now > submission.StartTime.AddMinutes(submission.TestSession.TimeLimit))
         {
             Navigation.NavigateTo("/test/unavailable", forceLoad: true);
             return;
@@ -179,7 +179,7 @@ else
 
     private async void UpdateTimer(object? state)
     {
-        var remaining = testEndTime - DateTime.UtcNow;
+        var remaining = testEndTime - DateTime.Now;
         if (remaining <= TimeSpan.Zero)
         {
             await InvokeAsync(() => AutoSubmitTest("TimedOut"));

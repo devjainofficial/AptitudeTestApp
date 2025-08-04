@@ -16,4 +16,5 @@ public interface ITestSessionService : IEntityService<TestSessionDto, Guid>
     Task<bool> IsTestSessionActiveAsync(string token);
     Task SaveAnswerAsync(Guid submissionId, Guid questionId, Guid? selectedOptionId);
     Task ToggleActiveTestSessionAsync(Guid id);
+    Task<List<TestSessionDto>?> GetTestsByQuestionIdAsync(Guid questionId);
 }

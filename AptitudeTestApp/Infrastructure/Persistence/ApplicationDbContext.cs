@@ -58,7 +58,7 @@ namespace AptitudeTestApp.Infrastructure.Persistence
                 entity.HasOne(d => d.Category)
                     .WithMany(p => p.Questions)
                     .HasForeignKey(d => d.CategoryId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // QuestionOption
@@ -94,7 +94,7 @@ namespace AptitudeTestApp.Infrastructure.Persistence
                 entity.HasOne(d => d.Question)
                     .WithMany(p => p.TestSessionQuestions)
                     .HasForeignKey(d => d.QuestionId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             // StudentSubmission
@@ -119,7 +119,7 @@ namespace AptitudeTestApp.Infrastructure.Persistence
                 entity.HasOne(d => d.Question)
                     .WithMany(p => p.StudentAnswers)
                     .HasForeignKey(d => d.QuestionId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                    .OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne(d => d.SelectedOption)
                     .WithMany(p => p.StudentAnswers)
                     .HasForeignKey(d => d.SelectedOptionId)

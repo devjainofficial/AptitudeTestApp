@@ -19,6 +19,19 @@ public class QuestionService(IRepository repo)
         return categories.Adapt<List<QuestionCategoryDto>>();
     }
 
+    public async Task<List<QuestionDto>> GetAllActiveQuestion(Guid creatorId)
+    {
+        if (creatorId == Guid.Empty)
+            throw new ArgumentException("Creator ID cannot be empty.", nameof(creatorId));
+
+        List<Question>? universities = await Repo.GetQueryable<Question>()
+            .Include(ca => ca.Category)
+            .Where(u => u.CreatorId == creatorId && u.IsActive)
+            .ToListAsync();
+
+        return universities.Adapt<List<QuestionDto>>();
+    }
+
     public async Task<(List<QuestionDto> questionsList, int totalQuestions)> GetQuestionsByFiltersAsync(
         Guid creatorId, 
         int skip, 
@@ -45,5 +58,27 @@ public class QuestionService(IRepository repo)
             .ContinueWith(task => task.Result.Adapt<List<QuestionDto>>());
 
         return (QuestionsList, totalQuestions);
+    }
+
+    public async Task DeleteQuestionAsync(Guid questionId, Guid creatorId)
+    {
+        if (questionId == Guid.Empty)
+            throw new ArgumentException("Question ID cannot be empty.", nameof(questionId));
+
+        List<TestSession> testSessions = await Repo.GetQueryable<TestSession>()
+            .Include(ts => ts.TestSessionQuestions)
+            .Where(ts => ts.TestSessionQuestions.Any(tsq => tsq.QuestionId == questionId && ts.CreatorId == creatorId))
+            .ToListAsync();
+
+        var testSessionQuestionsToRemove = testSessions
+            .SelectMany(ts => ts.TestSessionQuestions)
+            .Where(tsq => tsq.QuestionId == questionId)
+            .ToList();
+
+        await Repo.RemoveRangeAsync(testSessionQuestionsToRemove, cancellationToken: default);
+        
+        await Repo.RemoveRangeAsync(testSessions, cancellationToken: default);
+
+        await Repo.DeleteAsync<Question>(questionId, cancellationToken: default);
     }
 }

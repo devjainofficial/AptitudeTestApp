@@ -12,40 +12,35 @@
 
 <PageTitle>Admin Dashboard</PageTitle>
 
-<div class="container-fluid py-2 px-4 bg-light" style="min-height: 85vh;">
+<div class="container-fluid py-4 px-4 bg-white text-dark mt-2" style="min-height: 80vh;">
     <div class="mb-2">
         <h2 class="fw-semibold text-dark">Admin Dashboard</h2>
         <p class="text-muted">Welcome to the Talent Scope Administration Panel</p>
     </div>
 
-    <!-- Gradient Cards -->
     <div class="row row-cols-1 row-cols-sm-2 row-cols-md-4 g-4 mb-4">
         <div class="col">
             <DashboardCard title="Universities"
                            count="@totalUniversities"
                            icon="university"
-                           gradient="linear-gradient(135deg, #000000, #3c3a3f)"
                            link="/admin/universities" />
         </div>
         <div class="col">
             <DashboardCard title="Questions"
                            count="@totalQuestions"
                            icon="question-circle"
-                           gradient="linear-gradient(135deg, #000000, #2e4052)"
                            link="/admin/question-bank" />
         </div>  
         <div class="col">
             <DashboardCard title="Active Tests"
                            count="@activeTests"
                            icon="clipboard-list"
-                           gradient="linear-gradient(135deg, #000000, #330867)"
                            link="/admin/test-links" />
         </div>
         <div class="col">
             <DashboardCard title="Submissions"
                            count="@totalSubmissions"
                            icon="users"
-                           gradient="linear-gradient(135deg, #000000, #453423)"
                            link="/admin/student-results" />
         </div>
     </div>
@@ -54,14 +49,14 @@
     <!-- Quick Actions & Recent Sessions -->
     <div class="row g-4">
         <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white theme-box">
                 <div class="card-header bg-transparent border-0 px-0">
                     <h5 class="fw-medium text-dark">Quick Actions</h5>
                 </div>
                 <div class="card-body d-grid gap-3 px-0">
                     @foreach (var action in QuickActions)
                     {
-                        <a class="btn btn-light border d-flex align-items-center justify-content-between px-3 py-2 shadow-sm rounded-3 text-start" href="@action.Link">
+                        <a class="btn btn-light theme-box  d-flex align-items-center justify-content-between px-3 py-2 rounded-3 text-start" href="@action.Link">
                             <span><i class="fas fa-@action.Icon me-2"></i> @action.Label</span>
                             <i class="fas fa-chevron-right text-muted"></i>
                         </a>
@@ -71,7 +66,7 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white theme-box">
                 <div class="card-header bg-transparent border-0 px-0">
                     <h5 class="fw-medium text-dark">Recent Test Sessions</h5>
                 </div>
@@ -79,7 +74,7 @@
                     @if (recentTestSessions?.Any() == true)
                     {
                         <div class="table-responsive">
-                            <table class="table table-hover align-middle">
+                            <table class="table table-hover align-middle theme-box">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Test</th>

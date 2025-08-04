@@ -12,7 +12,7 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 
-<div class="container-fluid px-4 py-3">
+<div class="container-fluid py-4 px-4 bg-white text-dark">
     <!-- Header Section -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
@@ -160,6 +160,11 @@
                                             </button>
                                         }
                                         
+                                         <button class="btn btn-sm btn-outline-dark" 
+                                                @onclick="() => ShowEditModal(session)">
+                                            <i class="bi bi-pencil me-1"></i>Edit
+                                        </button>
+
                                         <button class="btn @(session.IsActive ? "btn-outline-dark" : "btn-dark") btn-sm"
                                                 @onclick="() => ToggleSessionStatus(session.Id)"
                                                 disabled="@isLoading">
@@ -249,17 +254,107 @@
     }
 </div>
 
-<!-- Delete Confirmation Modal -->
-@if (sessionToDelete != null)
+
+@if (showEditModal)
 {
     <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
         <div class="modal-dialog">
-            <div class="modal-content border-danger">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
+            <div class="modal-content border-dark">
+                <div class="modal-header bg-light border-dark">
+                    <h5 class="modal-title text-dark">
+                        <i class="bi bi-@(SelectedTest.Id == Guid.Empty ? "plus-circle" : "pencil") me-2"></i>
+                        @((SelectedTest.Id == Guid.Empty) ? "Add Test" : "Edit Test")
+                    </h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                     <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">
+                            Test Name <span class="text-danger">*</span>
+                        </label>
+                        <input class="form-control border-dark @(string.IsNullOrWhiteSpace(SelectedTest.TestName) ? "is-invalid" : "")" 
+                               @bind="SelectedTest.TestName" 
+                               placeholder="Enter test name..." />
+                        @if (string.IsNullOrWhiteSpace(SelectedTest.TestName))
+                        {
+                            <div class="invalid-feedback">Test name is required</div>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">
+                            University Name <span class="text-danger">*</span>
+                        </label>
+                        <input class="form-control border-dark @(string.IsNullOrWhiteSpace(SelectedTest.University.Name) ? "is-invalid" : "")" 
+                               @bind="SelectedTest.University.Name" 
+                               placeholder="Enter university name..." />
+                        @if (string.IsNullOrWhiteSpace(SelectedTest.University.Name))
+                        {
+                            <div class="invalid-feedback">University name is required</div>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">
+                            Time Limit <span class="text-danger">*</span>
+                        </label>
+                        <input class="form-control border-dark @((SelectedTest.TimeLimit <= 10) ? "is-invalid" : "")" 
+                               @bind="SelectedTest.TimeLimit" 
+                               placeholder="Enter Time Limit (10 - 180)" />
+                        @if (SelectedTest.TimeLimit <= 10)
+                        {
+                            <div class="invalid-feedback">Correct Time Limit is required</div>
+                        }
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">
+                            Start Time <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" 
+                               class="form-control border-dark @(!IsValidDateTime(SelectedTest.StartDate) ? "is-invalid" : "")" 
+                               @bind="SelectedTest.StartDate" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">
+                            End Time <span class="text-danger">*</span>
+                        </label>
+                        <input type="date" 
+                               class="form-control border-dark @(!IsValidDateTime(SelectedTest.EndDate) ? "is-invalid" : "")" 
+                               @bind="SelectedTest.EndDate" />
+                    </div>
+
+                    @if (!IsFormValid())
+                    {
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Please fill in all required fields correctly.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer bg-light border-dark">
+                    <button class="btn btn-outline-dark" @onclick="CloseModal">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                    <button class="btn btn-dark" @onclick="SaveTest" disabled="@isSaving">
+                        <i class="bi bi-@(isSaving ? "hourglass-split" : "check-circle") me-1"></i>
+                        @(isSaving ? "Saving..." : "Save University")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (sessionToDelete != null)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-danger text-white rounded-top-4">
+                    <h5 class="modal-title d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle-fill me-2 fs-4"></i>
                         Confirm Deletion
                     </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseDeleteModal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-light border-dark mb-3">
@@ -295,17 +390,20 @@
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? AuthenticationState { get; set; }
-    
+
     // Data properties
     private List<TestSessionDto> testSessions = new();
     private List<TestSessionDto> filteredTestSessions = new();
     private List<TestSessionDto> paginatedTestSessions = new();
-    
+
     // State management
     private bool isLoading = true;
     private bool isDeleting = false;
+    private bool isSaving = false;
     private TestSessionDto? sessionToDelete = null;
+    private TestSessionDto SelectedTest = new();
     private Guid creatorGuid;
+    private bool showEditModal = false;
     
     // Pagination properties
     private int currentPage = 1;
@@ -443,12 +541,40 @@
         }
     }
 
+    private void ShowEditModal(TestSessionDto test)
+    {
+        SelectedTest = test ?? new TestSessionDto();
+        showEditModal = true;
+    }
+
+     private bool IsFormValid()
+    {
+        return !string.IsNullOrWhiteSpace(SelectedTest.TestName) &&
+               !string.IsNullOrWhiteSpace(SelectedTest.University.Name) &&
+               SelectedTest.TimeLimit >= 10 &&
+               IsValidDateTime(SelectedTest.StartDate) &&
+               IsValidDateTime(SelectedTest.EndDate);
+    }
+
+
+    private void CloseModal()
+    {
+        showEditModal = false;
+        SelectedTest = new TestSessionDto();
+    }
+
     private void ConfirmDelete(TestSessionDto session)
     {
         sessionToDelete = session;
     }
 
     private void CancelDelete()
+    {
+        sessionToDelete = null;
+    }
+
+    
+    private void CloseDeleteModal()
     {
         sessionToDelete = null;
     }
@@ -480,6 +606,44 @@
         }
     }
 
+    private bool IsValidDateTime(DateTime dateTime)
+    {
+        return dateTime != default && dateTime > DateTime.MinValue && dateTime < DateTime.MaxValue;
+    }
+
+     private async Task SaveTest()
+    {        
+        if (!IsFormValid())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if (SelectedTest.Id == Guid.Empty)
+                await CreateNewTest(SelectedTest, creatorGuid);
+            else
+                await UpdateExistingTest(SelectedTest, creatorGuid);
+
+            showEditModal = false;
+            await LoadTestSessions();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - you might want to show a toast here
+            Console.WriteLine($"Error processing university: {ex.Message}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
     private string GetTestLink(TestSessionDto session)
     {
         string baseUrl = Navigation.BaseUri.TrimEnd('/');
@@ -506,6 +670,17 @@
             ToastService.Error("Failed", "Failed to copy link.", 5000);
             Console.WriteLine("JS Error copying: " + ex.Message);
         }
+    }
+
+    private async Task CreateNewTest(TestSessionDto test, Guid userId)
+    {
+        test.IsActive = true;
+        await testSessionService.CreateAsync(test, userId);
+    }
+
+    private async Task UpdateExistingTest(TestSessionDto test, Guid userId)
+    {
+        await testSessionService.UpdateAsync(test, userId);
     }
 
     private MarkupString HighlightSearchTerm(string? text)

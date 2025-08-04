@@ -7,7 +7,7 @@ namespace AptitudeTestApp.Application.Interfaces;
 public interface IQuestionService : IEntityService<QuestionDto, Guid>
 {
     Task<List<QuestionCategoryDto>> GetAllActiveCategoriesAsync();
-
+    Task<List<QuestionDto>> GetAllActiveQuestion(Guid creatorId);
     Task<(List<QuestionDto> questionsList, int totalQuestions)> GetQuestionsByFiltersAsync(
         Guid creatorId, 
         int skip, 
@@ -15,4 +15,5 @@ public interface IQuestionService : IEntityService<QuestionDto, Guid>
         bool? IsActive, 
         QuestionDifficulty? questionDifficulty 
     );
+    Task DeleteQuestionAsync(Guid questionId, Guid creatorId);
 }

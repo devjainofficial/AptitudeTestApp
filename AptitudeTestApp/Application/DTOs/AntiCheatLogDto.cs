@@ -10,5 +10,5 @@ public class AntiCheatLogDto : BaseDto<Guid>
     public string EventType { get; set; } = string.Empty;
 
     public string? EventDetails { get; set; }
-    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public DateTime Timestamp { get; set; } = DateTime.Now;
 }

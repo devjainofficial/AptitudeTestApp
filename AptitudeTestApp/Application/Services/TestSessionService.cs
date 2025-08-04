@@ -27,6 +27,7 @@ public class TestSessionService(IRepository Repo)
             StartDate = dto.StartDate,
             EndDate = dto.EndDate,
             Token = GenerateUniqueToken(),
+            ShowResult = dto.ShowResult,
             CreatorId = creatorId
         };
 
@@ -74,7 +75,7 @@ public class TestSessionService(IRepository Repo)
         TestSessionDto? testSession = await GetTestSessionByTokenAsync(token);
         if (testSession == null) return false;
 
-        DateTime now = DateTime.UtcNow;
+        DateTime now = DateTime.Now;
         return testSession.IsActive &&
                now >= testSession.StartDate &&
                now <= testSession.EndDate;
@@ -126,7 +127,7 @@ public class TestSessionService(IRepository Repo)
         {
             // Update existing answer
             existingAnswer.SelectedOptionId = selectedOptionId;
-            existingAnswer.AnsweredAt = DateTime.UtcNow;
+            existingAnswer.AnsweredAt = DateTime.Now;
         }
         else
         {
@@ -136,7 +137,7 @@ public class TestSessionService(IRepository Repo)
                 SubmissionId = submissionId,
                 QuestionId = questionId,
                 SelectedOptionId = selectedOptionId,
-                AnsweredAt = DateTime.UtcNow
+                AnsweredAt = DateTime.Now
             };
 
             await Repo.AddAsync(existingAnswer, false);
@@ -176,14 +177,14 @@ public class TestSessionService(IRepository Repo)
         return await Repo.GetQueryable<TestSession>()
             .CountAsync(ts => ts.IsActive &&
                         ts.CreatorId == creatorId && 
-                        ts.StartDate <= DateTime.UtcNow && 
-                        ts.EndDate >= DateTime.UtcNow
+                        ts.StartDate <= DateTime.Now && 
+                        ts.EndDate >= DateTime.Now
             );
     }
 
     public async Task<List<TestSession>> GetRecentTestSessionsAsync(int days, Guid creatorId)
     {
-        DateTime thresholdDate = DateTime.UtcNow.AddDays(-days);
+        DateTime thresholdDate = DateTime.Now.AddDays(-days);
 
         return await Repo.GetQueryable<TestSession>()
             .Include(ts => ts.University)
@@ -211,5 +212,18 @@ public class TestSessionService(IRepository Repo)
             session.IsActive = !session.IsActive;
             await Repo.SaveChangesAsync();
         }
+    }
+
+    public async Task<List<TestSessionDto>?> GetTestsByQuestionIdAsync(Guid questionId)
+    {
+        if (questionId == Guid.Empty)
+            throw new ArgumentException("Question ID cannot be empty.", nameof(questionId));
+
+        List<TestSession>? testSessions = await Repo.GetQueryable<TestSession>()
+            .Include(ts => ts.TestSessionQuestions).Include(tu => tu.University)
+            .Where(ts => ts.TestSessionQuestions.Any(tsq => tsq.QuestionId == questionId))
+            .ToListAsync();
+
+        return testSessions.Adapt<List<TestSessionDto>>();
     }
 }

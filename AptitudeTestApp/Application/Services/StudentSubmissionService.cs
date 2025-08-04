@@ -63,7 +63,7 @@ public class StudentSubmissionService(IRepository repository, ITestSessionServic
             StudentEmail = dto.StudentEmail,
             IpAddress = dto.IpAddress,
             BrowserInfo = dto.BrowserInfo,
-            StartTime = DateTime.UtcNow,
+            StartTime = DateTime.Now,
             Status = TestStatus.InProgress,
         };
 
@@ -85,7 +85,7 @@ public class StudentSubmissionService(IRepository repository, ITestSessionServic
         if (submission == null)
             throw new InvalidOperationException("Submission not found");
 
-        submission.EndTime = DateTime.UtcNow;
+        submission.EndTime = DateTime.Now;
         submission.TimeTaken = (int)(submission.EndTime.Value - submission.StartTime).TotalSeconds;
 
         submission.Status = reason == "Completed"

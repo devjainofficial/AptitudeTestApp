@@ -77,11 +77,15 @@
 
 <div class="login-container">
     <div class="login-card">
-
         <EditForm Model="@Input" Method="post" OnValidSubmit="LoginUser" FormName="login">
             <DataAnnotationsValidator />
             <h2>Welcome To Talent Scope</h2>
-
+            @if (!string.IsNullOrWhiteSpace(loginErrorMessage))
+            {
+                <div class="alert alert-danger" role="alert">
+                    @loginErrorMessage
+                </div>
+            }
             <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.Email"
                            id="InputEmail"
@@ -126,7 +130,6 @@
 
 
 @code {
-
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;
 
@@ -135,6 +138,9 @@
 
     [SupplyParameterFromQuery]
     private string? ReturnUrl { get; set; }
+
+    private SignInResult? result;
+    private string? loginErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,27 +153,40 @@
 
     public async Task LoginUser()
     {
-        // This doesn't count login failures towards account lockout
-        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+        result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+
         if (result.Succeeded)
         {
             Logger.LogInformation("User logged in.");
             RedirectManager.RedirectTo(ReturnUrl);
+            return;
         }
-        else if (result.RequiresTwoFactor)
+
+        if (result.RequiresTwoFactor)
         {
             RedirectManager.RedirectTo(
                 "Account/LoginWith2fa",
                 new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+            return;
         }
-        else if (result.IsLockedOut)
+
+        if (result.IsLockedOut)
         {
             Logger.LogWarning("User account locked out.");
             RedirectManager.RedirectTo("Account/Lockout");
+            return;
+        }
+
+        // Add appropriate error message based on SignInResult
+        if (result.IsNotAllowed)
+        {
+            loginErrorMessage = "Login not allowed. Please confirm your email or contact support.";
+        }
+        else
+        {
+            loginErrorMessage = "Invalid login attempt. Please check your email and password.";
         }
     }
-
     private sealed class InputModel
     {
         [Required]

@@ -1,13 +1,23 @@
-﻿using AptitudeTestApp.Shared.Enums;
+﻿using AptitudeTestApp.Data;
+using AptitudeTestApp.Shared.Enums;
 using global::AptitudeTestApp.Data.Models;
 using global::AptitudeTestApp.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace AptitudeTestApp.Application.Services;
-public class DataSeedingService(ApplicationDbContext context)
+
+public class DataSeedingService(
+    ApplicationDbContext context,
+    RoleManager<IdentityRole> roleManager,
+    UserManager<ApplicationUser> userManager,
+    IConfiguration configuration)
 {
     public async Task SeedAsync()
     {
+        await SeedRolesAsync();
+        await SeedSuperAdminAsync();
+
         if (!await context.QuestionCategories.AnyAsync())
         {
             await SeedCategoriesAsync();
@@ -21,6 +31,42 @@ public class DataSeedingService(ApplicationDbContext context)
         if (!await context.Questions.AnyAsync())
         {
             await SeedQuestionsAsync();
+        }
+    }
+
+    private async Task SeedRolesAsync()
+    {
+        string[] roleNames = { "SuperAdmin", "Admin", "Student" };
+
+        foreach (var roleName in roleNames)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleName));
+            }
+        }
+    }
+
+    private async Task SeedSuperAdminAsync()
+    {
+        var email = configuration["SuperAdmin:Email"];
+        var password = configuration["SuperAdmin:Password"];
+
+        var existingUser = await userManager.FindByEmailAsync(email ?? string.Empty);
+        if (existingUser != null)
+            return;
+
+        var superAdmin = new ApplicationUser
+        {
+            UserName = email,
+            Email = email,
+            EmailConfirmed = true
+        };
+
+        var result = await userManager.CreateAsync(superAdmin, password ?? string.Empty);
+        if (result.Succeeded)
+        {
+            await userManager.AddToRoleAsync(superAdmin, "SuperAdmin");
         }
     }
 

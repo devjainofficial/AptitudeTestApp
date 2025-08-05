@@ -1,6 +1,7 @@
 ﻿@using Radzen.Blazor
 @inherits LayoutComponentBase
 @implements IDisposable
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 @inject NavigationManager NavigationManager
 
@@ -53,6 +54,14 @@
                                     <i class="bi bi-people me-1"></i> Submissions
                                 </NavLink>
                             </li>
+                            @if (isSuperAdmin)
+                            {
+                                <li class="nav-item">
+                                    <NavLink class="nav-link text-dark fw-semibold" href="/superadmin/user-approvals">
+                                        <i class="bi bi-person-check me-1"></i> Approvals
+                                    </NavLink>
+                                </li>
+                            }
                         </ul>
 
                         <!-- Right Profile Menu -->
@@ -95,8 +104,14 @@
 @code {
     private string? currentUrl;
 
-    protected override void OnInitialized()
+    private bool isSuperAdmin = false;
+
+    protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        isSuperAdmin = user.IsInRole("SuperAdmin");
+
         currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         NavigationManager.LocationChanged += OnLocationChanged;
     }

@@ -1,0 +1,11 @@
+tasks:
+  - name: Run Blazor Server
+    init: |
+      dotnet restore
+    command: |
+      dotnet watch run --urls http://0.0.0.0:5000
+
+ports:
+  - port: 5000
+    onOpen: open-preview
+    visibility: public
